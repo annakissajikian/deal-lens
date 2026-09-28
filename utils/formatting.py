@@ -1,4 +1,4 @@
-"""Display helpers: 13.60x, 20.0%, $6,000m, n.m."""
+"""Display helpers: 13.60x, 20.0%, $6,000m, 106.00m shares, n.m."""
 
 from __future__ import annotations
 
@@ -17,4 +17,6 @@ def format_value(value: Optional[float], unit: str, currency: str = "USD") -> st
         return f"{value:.2f}x"
     if unit == "percent":
         return f"{value:.1%}"
+    if unit == "shares":
+        return f"{value:,.2f}m"
     return f"{value:,.2f}"

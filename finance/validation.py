@@ -12,14 +12,17 @@ from dataclasses import fields
 from datetime import date
 from numbers import Real
 
-from .models import DealAssumptions, DealFacts, DealInputError, DealInputs
+from .dilution import diluted_share_count
+from .models import DealAssumptions, DealFacts, DealInputError, DealInputs, OptionTranche, ShareBuild
 
 FINANCING_TOLERANCE = 0.001        # financing mix must total 100% +/- 0.1%
 EQUITY_VALUE_TOLERANCE = 0.02      # stated vs calculated equity value: 2%
 LARGE_PREMIUM_THRESHOLD = 0.50     # premiums above this are flagged for review
+SHARE_COUNT_TOLERANCE = 0.01       # entered vs share-build diluted shares: 1%
 
 # Numeric inputs that must always be present (None / JSON null is rejected).
 # The assumption fields have defaults, but an explicit null is still an error.
+# Exception: diluted_shares_outstanding may be omitted when a share_build is given.
 REQUIRED_NUMERIC = ("offer_price_per_share", "unaffected_share_price", "diluted_shares_outstanding",
                     "revenue", "ebitda", "total_debt", "cash",
                     "cost_synergies", "revenue_synergies",
@@ -59,7 +62,11 @@ def validate(inputs: DealInputs) -> list[str]:
     values.update({fl.name: getattr(a, fl.name) for fl in fields(DealAssumptions)})
     for name in REQUIRED_NUMERIC:
         v = values[name]
-        if v is None:
+        if v is None and name == "diluted_shares_outstanding":
+            if f.share_build is None:
+                errors.append(f"{name} is required and cannot be null/None "
+                              f"(or provide a share_build to calculate it).")
+        elif v is None:
             errors.append(f"{name} is required and cannot be null/None.")
         elif not _is_number(v):
             errors.append(f"{name} must be a finite number (got {v!r}).")
@@ -72,7 +79,7 @@ def validate(inputs: DealInputs) -> list[str]:
 
     # 3. Ranges
     for name in MUST_BE_POSITIVE:
-        if values[name] <= 0:
+        if values[name] is not None and values[name] <= 0:
             errors.append(f"{name} must be greater than zero.")
     for name in MUST_NOT_BE_NEGATIVE:
         if values[name] < 0:
@@ -84,6 +91,9 @@ def validate(inputs: DealInputs) -> list[str]:
     if f.stated_equity_value is not None and f.stated_equity_value <= 0:
         errors.append("stated_equity_value must be greater than zero if provided.")
 
+    if f.share_build is not None:
+        errors += _share_build_errors(f.share_build)
+
     mix_total = a.financing_cash + a.financing_debt + a.financing_stock
     if abs(mix_total - 1) > FINANCING_TOLERANCE:
         errors.append(f"Financing mix must total 100% (currently {mix_total:.1%}).")
@@ -94,13 +104,47 @@ def validate(inputs: DealInputs) -> list[str]:
     return _warnings(inputs)
 
 
+def _share_build_errors(build) -> list[str]:
+    """Type and range checks for the share build (basic shares, option tranches, RSUs)."""
+    if not isinstance(build, ShareBuild):
+        return [f"share_build must be a ShareBuild (got {type(build).__name__})."]
+    errors: list[str] = []
+
+    def check(label, v, positive=False):
+        if not _is_number(v):
+            errors.append(f"{label} must be a finite number (got {v!r}).")
+        elif positive and v <= 0:
+            errors.append(f"{label} must be greater than zero.")
+        elif v < 0:
+            errors.append(f"{label} cannot be negative.")
+
+    check("share_build.basic_shares", build.basic_shares, positive=True)
+    check("share_build.rsus", build.rsus)
+    for i, t in enumerate(build.option_tranches):
+        if not isinstance(t, OptionTranche):
+            errors.append(f"share_build.option_tranches[{i}] must be an OptionTranche (got {t!r}).")
+            continue
+        check(f"share_build.option_tranches[{i}].number", t.number)
+        check(f"share_build.option_tranches[{i}].strike", t.strike)
+    return errors
+
+
 def _warnings(inputs: DealInputs) -> list[str]:
     f, a = inputs.facts, inputs.assumptions
     w: list[str] = []
 
+    # Share count cross-check (both the entered figure and a share build given)
+    shares = diluted_share_count(f)
+    if f.share_build is not None and f.diluted_shares_outstanding is not None:
+        gap = f.diluted_shares_outstanding / shares - 1
+        if abs(gap) > SHARE_COUNT_TOLERANCE:
+            w.append(f"Entered diluted shares ({f.diluted_shares_outstanding:,.2f}m) differ from the "
+                     f"share build ({shares:,.2f}m, treasury stock method) by {gap:+.1%}. The share "
+                     f"build figure is used; check the dates and whether RSUs/PSUs are included.")
+
     # Equity value cross-check
     if f.stated_equity_value is not None:
-        calculated = f.offer_price_per_share * f.diluted_shares_outstanding
+        calculated = f.offer_price_per_share * shares
         gap = f.stated_equity_value / calculated - 1
         if abs(gap) > EQUITY_VALUE_TOLERANCE:
             w.append(f"Stated equity value ({f.stated_equity_value:,.0f}) differs from offer price x "

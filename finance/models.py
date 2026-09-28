@@ -44,11 +44,26 @@ class DealInfo:
 
 
 @dataclass(frozen=True)
+class OptionTranche:
+    """One exercise-price range from the stock option table in the 10-K."""
+    number: float                           # millions of options outstanding
+    strike: float                           # weighted-average exercise price per share
+
+
+@dataclass(frozen=True)
+class ShareBuild:
+    """Components of the fully diluted share count (treasury stock method)."""
+    basic_shares: float                     # millions, shares actually outstanding
+    option_tranches: tuple[OptionTranche, ...] = ()
+    rsus: float = 0.0                       # millions of unvested RSUs + PSUs (PSUs at target)
+    as_of: str = ""                         # dates of the counts, e.g. "basic 2022-02-15; awards 2021-12-31"
+
+
+@dataclass(frozen=True)
 class DealFacts:
     # Deal terms
     offer_price_per_share: float
     unaffected_share_price: float           # pre-announcement, undisturbed price
-    diluted_shares_outstanding: float       # millions, fully diluted
     # Target financials (all for the same period)
     revenue: float
     ebitda: float
@@ -58,6 +73,10 @@ class DealFacts:
     ebit: Optional[float] = None
     stated_equity_value: Optional[float] = None   # headline figure, used only as a cross-check
     financials_period: str = "LTM"
+    # Share count (millions): enter the fully diluted figure directly OR give a
+    # share_build and the engine calculates it with the treasury stock method.
+    diluted_shares_outstanding: Optional[float] = None
+    share_build: Optional[ShareBuild] = None
 
 
 @dataclass(frozen=True)
@@ -89,7 +108,7 @@ class Metric:
     key: str                      # machine name, e.g. "ev_ebitda"
     label: str                    # display name, e.g. "EV / EBITDA"
     value: Optional[float]        # None = not meaningful (see note)
-    unit: str                     # "currency" | "multiple" | "percent"
+    unit: str                     # "currency" | "multiple" | "percent" | "shares"
     formula: str
     section: str
     depends_on_assumptions: bool = False

@@ -7,6 +7,9 @@ The JSON has three sections that mirror the data model:
     "assumptions"  -> DealAssumptions
 Keys starting with "_" are treated as comments and ignored.
 
+"facts" may contain an optional "share_build" object (basic_shares, rsus,
+as_of and a list of option_tranches, each {number, strike}).
+
 Every structural problem (wrong types, missing sections, bad dates) is raised
 as a DealInputError, never as a raw Python error.
 """
@@ -19,7 +22,8 @@ from dataclasses import fields
 from datetime import date
 from pathlib import Path
 
-from finance.models import DealAssumptions, DealFacts, DealInfo, DealInputError, DealInputs
+from finance.models import (DealAssumptions, DealFacts, DealInfo, DealInputError, DealInputs,
+                            OptionTranche, ShareBuild)
 
 SECTIONS = {"deal": DealInfo, "facts": DealFacts, "assumptions": DealAssumptions}
 DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -47,6 +51,22 @@ def _parse_date(value) -> date:
         raise DealInputError([f"announcement_date must be a valid YYYY-MM-DD date: {exc}"]) from exc
 
 
+def _parse_share_build(raw) -> ShareBuild:
+    if not isinstance(raw, dict):
+        raise DealInputError([f"share_build must be an object {{...}}, got {type(raw).__name__}."])
+    data = dict(raw)
+    tranches = data.get("option_tranches", [])
+    if not isinstance(tranches, list):
+        raise DealInputError([f"option_tranches must be a list [...], got {type(tranches).__name__}."])
+    not_objects = [f"option_tranches[{i}] must be an object {{\"number\": ..., \"strike\": ...}}."
+                   for i, t in enumerate(tranches) if not isinstance(t, dict)]
+    if not_objects:
+        raise DealInputError(not_objects)
+    data["option_tranches"] = tuple(_build(f"option_tranches[{i}]", OptionTranche, t)
+                                    for i, t in enumerate(tranches))
+    return _build("share_build", ShareBuild, data)
+
+
 def load_deal(path: str | Path) -> DealInputs:
     try:
         raw = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -69,8 +89,12 @@ def load_deal(path: str | Path) -> DealInputs:
     if deal.get("announcement_date") is not None:
         deal["announcement_date"] = _parse_date(deal["announcement_date"])
 
+    facts = dict(raw["facts"])
+    if facts.get("share_build") is not None:
+        facts["share_build"] = _parse_share_build(facts["share_build"])
+
     return DealInputs(
         info=_build("deal", DealInfo, deal),
-        facts=_build("facts", DealFacts, raw["facts"]),
+        facts=_build("facts", DealFacts, facts),
         assumptions=_build("assumptions", DealAssumptions, raw["assumptions"]),
     )

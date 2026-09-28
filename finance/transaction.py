@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from .dilution import diluted_share_count, treasury_stock_method
 from .models import DealInputs, Metric, TransactionAnalysis
 from .validation import validate
 
@@ -65,8 +66,32 @@ def analyse_transaction(inputs: DealInputs) -> TransactionAnalysis:
             note = "n.m.: denominator missing, zero or negative."
         result.metrics[key] = Metric(key, label, value, unit, formula, section, assumption, note)
 
+    # Share count (only shown when calculated from a share build)
+    shares = diluted_share_count(f)
+    if f.share_build is not None:
+        b, price = f.share_build, f.offer_price_per_share
+        exercised, repurchased = treasury_stock_method(b.option_tranches, price)
+        out_of_money = sum(t.number for t in b.option_tranches if t.strike >= price)
+        add("basic_shares", "Basic shares outstanding", b.basic_shares, "shares",
+            "Input (share build)", "Share count", note=f"As of: {b.as_of}" if b.as_of else "")
+        add("options_exercised", "In-the-money options exercised", exercised, "shares",
+            "Σ options with strike < Offer price", "Share count",
+            note=f"{out_of_money:,.2f}m options with strike ≥ offer price excluded (out of the money)."
+            if out_of_money else "")
+        add("shares_repurchased", "Shares repurchased with exercise proceeds", repurchased, "shares",
+            "Σ (Options × Strike) ÷ Offer price", "Share count")
+        add("net_option_shares", "Net new shares from options", exercised - repurchased, "shares",
+            "Options exercised − Shares repurchased", "Share count")
+        add("rsus", "RSUs / PSUs", b.rsus, "shares", "Input (share build)", "Share count",
+            note="Each unit counts as one share (no strike); PSUs at target.")
+        add("fully_diluted_shares", "Fully diluted shares", shares, "shares",
+            "Basic + Net new shares from options + RSUs/PSUs", "Share count",
+            note="Treasury stock method at the offer price. The same count is used for the unaffected "
+                 "equity value (simplification: at the lower unaffected price fewer options would be "
+                 "in the money, giving slightly fewer shares).")
+
     # Transaction value
-    eq = equity_value(f.offer_price_per_share, f.diluted_shares_outstanding)
+    eq = equity_value(f.offer_price_per_share, shares)
     net_debt = f.total_debt - f.cash
     ev = enterprise_value(eq, f.total_debt, f.cash)
     add("equity_value", "Transaction equity value", eq, "currency",
@@ -76,7 +101,7 @@ def analyse_transaction(inputs: DealInputs) -> TransactionAnalysis:
         "Transaction equity value + Debt − Cash", "Transaction value")
 
     # Premium
-    unaffected_eq = equity_value(f.unaffected_share_price, f.diluted_shares_outstanding)
+    unaffected_eq = equity_value(f.unaffected_share_price, shares)
     add("premium", "Acquisition premium",
         acquisition_premium(f.offer_price_per_share, f.unaffected_share_price), "percent",
         "Offer price ÷ Unaffected share price − 1", "Premium")

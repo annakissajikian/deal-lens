@@ -33,7 +33,18 @@ def main(path: str) -> int:
 
     print("\nINPUTS — FACTS")
     for k, v in asdict(deal.facts).items():
+        if k == "share_build":
+            continue
         print(f"  {k:<36}{'—' if v is None else v}")
+    build = deal.facts.share_build
+    if build is not None:
+        print("  share_build")
+        print(f"    {'basic_shares':<34}{build.basic_shares}")
+        for i, t in enumerate(build.option_tranches):
+            print(f"    {f'option_tranches[{i}]':<34}{t.number} @ strike {t.strike}")
+        print(f"    {'rsus':<34}{build.rsus}")
+        if build.as_of:
+            print(f"    {'as_of':<34}{build.as_of}")
     print("\nINPUTS — ASSUMPTIONS")
     for k, v in asdict(deal.assumptions).items():
         print(f"  {k:<36}{'—' if v is None else v}")

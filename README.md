@@ -8,7 +8,10 @@ these results; it is never used as a calculator.
 
 ## Status
 
-**Step 1 — Transaction engine.** Command line only; the interface comes later.
+**Step 1 — Transaction engine.** Complete.
+**Step 2 — Fully diluted shares (treasury stock method).** Engine complete;
+real-deal test case (Microsoft / Activision Blizzard) in progress.
+Command line only; the interface comes later.
 
 ## Quick start
 
@@ -29,6 +32,7 @@ deal-lens/
 ├── finance/                     # deterministic engine, no AI
 │   ├── models.py                # DealInfo, DealFacts, DealAssumptions, Metric
 │   ├── validation.py            # errors (stop) and warnings (review)
+│   ├── dilution.py              # fully diluted shares (treasury stock method)
 │   └── transaction.py           # the formulas
 ├── utils/
 │   ├── io.py                    # JSON file -> DealInputs
@@ -36,6 +40,7 @@ deal-lens/
 ├── data/sample_deals/illustrative_deal.json
 └── tests/
     ├── test_transaction.py      # hand-calculated finance results
+    ├── test_dilution.py         # hand-calculated treasury stock method
     └── test_validation.py       # rejected and flagged inputs
 ```
 
@@ -50,6 +55,9 @@ deal-lens/
 
 | Metric | Formula |
 |---|---|
+| Options exercised (TSM) | Σ options with strike < offer price, tranche by tranche |
+| Shares repurchased (TSM) | Σ (options × strike) ÷ offer price |
+| Fully diluted shares | Basic shares + options exercised − shares repurchased + RSUs/PSUs |
 | Transaction equity value | Offer price × Fully diluted shares |
 | Transaction enterprise value | Equity value + Debt − Cash |
 | Acquisition premium | Offer price ÷ Unaffected (pre-announcement) price − 1 |
@@ -61,12 +69,34 @@ deal-lens/
 | Synergy-adjusted EV / EBITDA | Transaction EV ÷ Pro forma EBITDA |
 | Financing split | Equity value × share of cash / debt / stock |
 
-## Limitations (Step 1)
+## Share count
+
+Either enter `diluted_shares_outstanding` directly, or give a `share_build`
+in `facts` and DealLens calculates it with the treasury stock method:
+
+```json
+"share_build": {
+  "basic_shares": 100,
+  "option_tranches": [{"number": 6, "strike": 30}, {"number": 4, "strike": 45}],
+  "rsus": 2,
+  "as_of": "basic 2026-01-10; awards 2025-12-31"
+}
+```
+
+If both are given, the share build is used and a difference above 1% is flagged.
+
+## Limitations
 
 - Enterprise value excludes preferred stock, minority interests, leases and
   pension liabilities.
-- The diluted share count is entered by the user; it is not yet derived from
-  options and RSUs.
+- The treasury stock method is applied at the offer price, and that share
+  count is also used for the unaffected equity value. At the lower unaffected
+  price fewer options would be in the money, so unaffected equity value is
+  slightly overstated.
+- Each option tranche uses its weighted-average strike. Options inside a range
+  can straddle the offer price; a finer table gives a more precise result.
+- RSUs and PSUs count one share each; PSUs are counted at target.
+- Convertible securities and warrants are not yet modelled.
 - A stated headline equity value is only a cross-check; the calculated figure
   is always used.
 - If no incremental margin is given, revenue synergies use the target's
