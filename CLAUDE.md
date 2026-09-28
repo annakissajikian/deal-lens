@@ -120,14 +120,17 @@ python -m pytest -v                        # run all tests
     maths formula and misquotes filings.
   - Known cosmetic limitation: long deal names are cut short in the sidebar
     dropdown (fixing it needs custom CSS).
-- **Step 4 — DCF + WACC / terminal growth sensitivity: NEXT.**
-  Confirm scope with Anna before starting.
+- **Step 3b — "New deal" input form: NEXT (plan proposed, awaiting Anna's
+  confirmation).** Then Step 4 (DCF).
 
 ## Roadmap (confirm order with Anna before each step)
 2. Fully diluted shares (treasury stock method) + a real test case
    (recommended: Microsoft / Activision Blizzard, figures sourced from the
    Activision 10-K and merger proxy with page references)
 3. Streamlit MVP: Deal Overview + Financials tabs
+3b. "New deal" input form: grouped fields for deal info, facts and
+    assumptions; inline validation errors/warnings; run the analysis;
+    download or save the deal as JSON
 4. DCF + WACC / terminal growth sensitivity
 5. Comparable companies (manual entry + CSV upload)
 6. Precedent transactions + football field chart

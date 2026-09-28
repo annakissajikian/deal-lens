@@ -13,6 +13,8 @@ these results; it is never used as a calculator.
 real-deal test case: Microsoft / Activision Blizzard (see below).
 **Step 3 — Streamlit web app.** Deal Overview and Financials tabs for any
 deal file in `data/sample_deals/`.
+**Step 3b — New deal form.** Enter a deal in the app, validate it, run it,
+and download or save it as JSON.
 
 ## Quick start
 
@@ -34,6 +36,7 @@ deal-lens/
 ├── app.py                       # Streamlit web app (display only, no calculations)
 ├── run_analysis.py              # command-line demo
 ├── ui/
+│   ├── deal_form.py             # New deal form: grouped inputs, inline errors, export
 │   ├── overview.py              # Deal Overview tab: headline tiles, deal terms, warnings
 │   └── financials.py            # Financials tab: tagged tables and sources
 ├── .streamlit/config.toml       # app theme
@@ -48,12 +51,14 @@ deal-lens/
 ├── data/
 │   ├── sample_deals/illustrative_deal.json     # round numbers, checkable by hand
 │   ├── sample_deals/microsoft_activision.json  # real deal, every figure sourced
-│   └── sources/                                # saved evidence (e.g. share price screenshot)
+│   ├── sources/                                # saved evidence (e.g. share price screenshot)
+│   └── user_deals/                             # deals saved from the app's New deal form
 └── tests/
     ├── test_transaction.py      # hand-calculated finance results
     ├── test_dilution.py         # hand-calculated treasury stock method
     ├── test_activision.py       # real-deal regression test
     ├── test_app.py              # web app, run headless with Streamlit AppTest
+    ├── test_deal_form.py        # New deal form: conversions, saving, headless form runs
     └── test_validation.py       # rejected and flagged inputs
 ```
 
@@ -68,6 +73,18 @@ deal-lens/
   figures, e.g. EBITDA), **Assumption**, **Calculated** or **Calculated · uses
   assumptions**. For a real deal, a Sources section traces every figure to its
   document, page and quoted snippet, and shows the published cross-checks.
+
+**New deal** (sidebar mode *Enter a new deal*): fill in deal info, deal
+terms, share count (entered directly or built with the treasury stock method),
+target financials and assumptions, optionally starting from an existing deal.
+*Run analysis* validates everything at once: errors appear in a summary and
+under the group they belong to. A valid deal shows the same two tabs and can
+be downloaded as JSON or saved to `data/user_deals/` (it then appears in the
+dropdown as "Saved: ..."; existing files are never overwritten without
+ticking *Overwrite*). Form entries use the same parser and validation as deal
+files. Percentages are typed as 25 for 25% and stored as 0.25. Blank optional
+fields mean "not provided", never zero. Deals entered in the form have no
+`_sources` and are marked as not source-verified.
 
 The app only displays results: all numbers come from `finance/`.
 

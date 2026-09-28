@@ -44,7 +44,7 @@ def table_with(at: AppTest, column: str, value: str):
 
 def test_dropdown_lists_both_sample_deals():
     at = AppTest.from_file(APP, default_timeout=30).run()
-    assert at.sidebar.selectbox[0].options == [ILLUSTRATIVE, ACTIVISION]
+    assert at.sidebar.selectbox[0].options[:2] == [ILLUSTRATIVE, ACTIVISION]   # then any "Saved: ..." deals
 
 
 @pytest.mark.parametrize("deal", [ILLUSTRATIVE, ACTIVISION])
@@ -133,7 +133,7 @@ def test_sources_shown_for_real_deal_only():
     assert not at.main.tabs[1].info
 
     at = run_app(ILLUSTRATIVE)
-    assert at.info[0].value == "Illustrative deal: hypothetical round numbers, no sources."
+    assert at.info[0].value == "No sources recorded for this deal."
 
 
 def test_figure_detail_quotes_the_source_exactly():

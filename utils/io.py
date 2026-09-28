@@ -16,6 +16,9 @@ as a DealInputError, never as a raw Python error.
 Real-deal files may also carry "_documents", "_sources" and "_cross_checks".
 load_deal() ignores them (they are provenance, not inputs); load_sources()
 returns them for display.
+
+deal_from_dict() does the parsing for both a JSON file (load_deal) and the
+app's input form, so every deal goes through exactly the same checks.
 """
 
 from __future__ import annotations
@@ -31,6 +34,7 @@ from finance.models import (DealAssumptions, DealFacts, DealInfo, DealInputError
 
 SECTIONS = {"deal": DealInfo, "facts": DealFacts, "assumptions": DealAssumptions}
 SAMPLE_DEALS_DIR = Path(__file__).parent.parent / "data" / "sample_deals"
+USER_DEALS_DIR = Path(__file__).parent.parent / "data" / "user_deals"
 DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
@@ -77,7 +81,11 @@ def load_deal(path: str | Path) -> DealInputs:
         raw = json.loads(Path(path).read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise DealInputError([f"{Path(path).name} is not valid JSON: {exc}"]) from exc
+    return deal_from_dict(raw)
 
+
+def deal_from_dict(raw) -> DealInputs:
+    """Parse a deal in JSON form (a dict with "deal", "facts", "assumptions") into DealInputs."""
     if not isinstance(raw, dict):
         raise DealInputError([f"The JSON root must be an object {{...}}, got {type(raw).__name__}."])
 
@@ -124,3 +132,21 @@ def load_sources(path: str | Path) -> dict[str, dict]:
     if not isinstance(raw, dict):
         raw = {}
     return {key: raw.get(f"_{key}", {}) for key in ("documents", "sources", "cross_checks")}
+
+
+def deal_filename(raw: dict) -> str:
+    """Safe file name from the deal's names, e.g. 'Northwind Holdings' + 'Apex' -> 'northwind_holdings_apex.json'."""
+    info = raw.get("deal", {})
+    name = f"{info.get('acquirer', '')} {info.get('target', '')}".lower()
+    return (re.sub(r"[^a-z0-9]+", "_", name).strip("_") or "deal") + ".json"
+
+
+def save_deal(raw: dict, folder: str | Path | None = None, overwrite: bool = False) -> Path:
+    """Write a deal dict as JSON to `folder` (default data/user_deals/). Refuses to overwrite unless asked."""
+    folder = Path(folder or USER_DEALS_DIR)
+    path = folder / deal_filename(raw)
+    if path.exists() and not overwrite:
+        raise FileExistsError(f"{path.name} already exists in {folder.name}/.")
+    folder.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return path

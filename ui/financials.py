@@ -77,7 +77,7 @@ def render_financials(analysis: TransactionAnalysis, sources: dict) -> None:
 def _render_sources(deal: DealInputs, analysis: TransactionAnalysis, sources: dict) -> None:
     st.subheader("Sources")
     if not sources["sources"]:
-        st.info("Illustrative deal: hypothetical round numbers, no sources.")
+        st.info("No sources recorded for this deal.")
         return
 
     st.markdown("**Documents**")
