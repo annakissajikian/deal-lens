@@ -1,0 +1,32 @@
+{
+  "_comment": "ILLUSTRATIVE deal, not a real transaction. Round numbers so every result can be checked by hand. Money and shares in millions; percentages as decimals.",
+  "deal": {
+    "acquirer": "Northwind Holdings",
+    "target": "Apex Components",
+    "sector": "Industrials",
+    "announcement_date": "2026-01-15",
+    "currency": "USD"
+  },
+  "facts": {
+    "offer_price_per_share": 60.0,
+    "unaffected_share_price": 50.0,
+    "diluted_shares_outstanding": 100.0,
+    "revenue": 2500.0,
+    "ebitda": 500.0,
+    "ebit": 400.0,
+    "net_income": 300.0,
+    "total_debt": 1200.0,
+    "cash": 400.0,
+    "stated_equity_value": 6000.0,
+    "financials_period": "FY2025"
+  },
+  "assumptions": {
+    "cost_synergies": 50.0,
+    "revenue_synergies": 100.0,
+    "revenue_synergy_incremental_margin": 0.30,
+    "financing_cash": 0.40,
+    "financing_debt": 0.40,
+    "financing_stock": 0.20,
+    "tax_rate": 0.25
+  }
+}
