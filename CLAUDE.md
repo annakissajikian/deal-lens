@@ -120,8 +120,29 @@ python -m pytest -v                        # run all tests
     maths formula and misquotes filings.
   - Known cosmetic limitation: long deal names are cut short in the sidebar
     dropdown (fixing it needs custom CSS).
-- **Step 3b — "New deal" input form: NEXT (plan proposed, awaiting Anna's
-  confirmation).** Then Step 4 (DCF).
+- **Step 3b — "New deal" input form: COMPLETE.** 179 tests pass (24 new in
+  `tests/test_deal_form.py`). Sidebar mode "Enter a new deal" →
+  `ui/deal_form.py`: tabs Inputs / Deal Overview / Financials; "Start from"
+  prefill; five groups (deal info, deal terms, share count incl. TSM tranche
+  table, target financials, assumptions); Run shows an error summary plus
+  each error under its group; download JSON; save to `data/user_deals/`
+  (listed in the dropdown as "Saved: ..."; tracked by git; never overwrites
+  without the "Overwrite" tick box).
+  Decisions agreed with Anna: percentages typed as 25 for 25% (converted to
+  0.25 only in `build_deal_dict`); saved deals in `data/user_deals/`, not
+  gitignored; on Streamlit Cloud saving is not persistent, so decide in
+  Step 11 whether to hide Save when deployed (Download always works).
+  Rules for future UI work:
+  - Every deal, from a file or the form, goes through
+    `utils/io.deal_from_dict()`; never build `DealInputs` another way.
+  - Every `st.number_input` for an optional or required figure needs
+    `value=None`, otherwise clearing it silently becomes 0.
+  - Streamlit deletes the state of widgets that are not drawn: the form
+    keeps `st.session_state.f_saved` as the persistent copy.
+  - Tabs that share a label with another view need their own `key`/`default`.
+  - No `st.form`: results hide when inputs change after a run.
+- **Step 4 — DCF + WACC / terminal growth sensitivity: NEXT.**
+  Confirm scope with Anna before starting.
 
 ## Roadmap (confirm order with Anna before each step)
 2. Fully diluted shares (treasury stock method) + a real test case
