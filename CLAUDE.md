@@ -73,6 +73,18 @@ python -m pytest -v                        # run all tests
   premium 20%; EV/Revenue 2.72x; EV/EBITDA 13.60x; EBITDA margin 20%;
   pro forma EBITDA 580; synergy-adjusted EV/EBITDA 11.72x.
   These must not change.
+- **Step 2a — Fully diluted shares (treasury stock method): COMPLETE.**
+  126 tests pass (95 Step 1 + 31 in `tests/test_dilution.py`).
+  `finance/dilution.py` applies TSM tranche by tranche at the offer price.
+  Deals give either `diluted_shares_outstanding` or a `share_build`
+  (basic shares, option tranches, RSUs/PSUs); if both, the build is used and
+  a >1% gap is a WARNING. Decisions agreed with Anna: the offer-price share
+  count is also used for unaffected equity value (stated limitation); cash =
+  cash and equivalents only; PSUs counted at target.
+  Step 1 outputs above are unchanged.
+- **Step 2b — Microsoft / Activision Blizzard test case: NEXT.** Waiting for
+  Anna to collect figures (value, document, page, as-of date) from the ATVI
+  FY2021 10-K, the DEFM14A merger proxy and Microsoft's announcement.
 
 ## Roadmap (confirm order with Anna before each step)
 2. Fully diluted shares (treasury stock method) + a real test case
