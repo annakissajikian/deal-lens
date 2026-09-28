@@ -11,7 +11,8 @@ these results; it is never used as a calculator.
 **Step 1 — Transaction engine.** Complete.
 **Step 2 — Fully diluted shares (treasury stock method).** Complete, with a
 real-deal test case: Microsoft / Activision Blizzard (see below).
-Command line only; the interface comes later.
+**Step 3 — Streamlit web app.** Deal Overview and Financials tabs for any
+deal file in `data/sample_deals/`.
 
 ## Quick start
 
@@ -22,6 +23,7 @@ pip install -r requirements.txt
 
 python run_analysis.py             # analyse the illustrative deal
 python run_analysis.py data/sample_deals/microsoft_activision.json   # real deal
+streamlit run app.py               # web app at http://localhost:8501
 python -m pytest -v                # run the tests
 ```
 
@@ -29,7 +31,12 @@ python -m pytest -v                # run the tests
 
 ```
 deal-lens/
+├── app.py                       # Streamlit web app (display only, no calculations)
 ├── run_analysis.py              # command-line demo
+├── ui/
+│   ├── overview.py              # Deal Overview tab: headline tiles, deal terms, warnings
+│   └── financials.py            # Financials tab: tagged tables and sources
+├── .streamlit/config.toml       # app theme
 ├── finance/                     # deterministic engine, no AI
 │   ├── models.py                # DealInfo, DealFacts, DealAssumptions, Metric
 │   ├── validation.py            # errors (stop) and warnings (review)
@@ -46,8 +53,23 @@ deal-lens/
     ├── test_transaction.py      # hand-calculated finance results
     ├── test_dilution.py         # hand-calculated treasury stock method
     ├── test_activision.py       # real-deal regression test
+    ├── test_app.py              # web app, run headless with Streamlit AppTest
     └── test_validation.py       # rejected and flagged inputs
 ```
+
+## Web app
+
+`streamlit run app.py` opens the app. Choose a deal in the sidebar:
+
+- **Deal Overview**: enterprise value, equity value, premium and EV/EBITDA
+  tiles; deal terms; warnings.
+- **Financials**: target financials, assumptions and every calculated metric
+  with its formula, each tagged **Fact**, **Fact · derived** (built from filing
+  figures, e.g. EBITDA), **Assumption**, **Calculated** or **Calculated · uses
+  assumptions**. For a real deal, a Sources section traces every figure to its
+  document, page and quoted snippet, and shows the published cross-checks.
+
+The app only displays results: all numbers come from `finance/`.
 
 ## Conventions
 

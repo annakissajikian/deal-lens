@@ -12,6 +12,10 @@ as_of and a list of option_tranches, each {number, strike}).
 
 Every structural problem (wrong types, missing sections, bad dates) is raised
 as a DealInputError, never as a raw Python error.
+
+Real-deal files may also carry "_documents", "_sources" and "_cross_checks".
+load_deal() ignores them (they are provenance, not inputs); load_sources()
+returns them for display.
 """
 
 from __future__ import annotations
@@ -26,6 +30,7 @@ from finance.models import (DealAssumptions, DealFacts, DealInfo, DealInputError
                             OptionTranche, ShareBuild)
 
 SECTIONS = {"deal": DealInfo, "facts": DealFacts, "assumptions": DealAssumptions}
+SAMPLE_DEALS_DIR = Path(__file__).parent.parent / "data" / "sample_deals"
 DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
@@ -98,3 +103,24 @@ def load_deal(path: str | Path) -> DealInputs:
         facts=_build("facts", DealFacts, facts),
         assumptions=_build("assumptions", DealAssumptions, raw["assumptions"]),
     )
+
+
+def list_sample_deals(folder: str | Path = SAMPLE_DEALS_DIR) -> dict[str, Path]:
+    """Map an 'Acquirer / Target' label to each deal file in `folder`, in file-name order."""
+    deals: dict[str, Path] = {}
+    for path in sorted(Path(folder).glob("*.json")):
+        try:
+            info = json.loads(path.read_text(encoding="utf-8"))["deal"]
+            label = f"{info['acquirer']} / {info['target']}"
+        except (json.JSONDecodeError, KeyError, TypeError):
+            label = path.stem   # still listed: loading it shows the validation errors
+        deals[label] = path
+    return deals
+
+
+def load_sources(path: str | Path) -> dict[str, dict]:
+    """The provenance blocks of a deal file; empty dicts when a file has none."""
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raw = {}
+    return {key: raw.get(f"_{key}", {}) for key in ("documents", "sources", "cross_checks")}

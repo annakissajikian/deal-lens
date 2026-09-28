@@ -1,4 +1,4 @@
-"""Display helpers: 13.60x, 20.0%, $6,000m, 106.00m shares, n.m."""
+"""Display helpers: 13.60x, 20.0%, $6,000m, $95.00 per share, 106.00m shares, n.m."""
 
 from __future__ import annotations
 
@@ -17,6 +17,13 @@ def format_value(value: Optional[float], unit: str, currency: str = "USD") -> st
         return f"{value:.2f}x"
     if unit == "percent":
         return f"{value:.1%}"
+    if unit == "per_share":
+        return f"{symbol}{value:,.2f}"
     if unit == "shares":
         return f"{value:,.2f}m"
     return f"{value:,.2f}"
+
+
+def md(text: str) -> str:
+    """Escape '$' so Streamlit markdown shows it as text, not as the start of a maths formula."""
+    return text.replace("$", "\\$")

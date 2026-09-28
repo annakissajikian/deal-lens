@@ -253,3 +253,38 @@ def test_validate_rejects_non_date_object():
     bad = DealInputs(replace(DEAL.info, announcement_date="2026-01-15"), DEAL.facts, DEAL.assumptions)
     with pytest.raises(DealInputError, match="YYYY-MM-DD"):
         validate(bad)
+
+
+# ================================================== Step 3: loader helpers ==
+
+from utils.io import list_sample_deals, load_sources
+
+
+def test_list_sample_deals_labels_every_file():
+    deals = list_sample_deals()
+    assert deals["Northwind Holdings / Apex Components"].name == "illustrative_deal.json"
+    assert deals["Microsoft Corporation / Activision Blizzard, Inc."].name == "microsoft_activision.json"
+
+
+def test_list_sample_deals_keeps_invalid_files_under_their_name(tmp_path):
+    (tmp_path / "broken.json").write_text("{not json")
+    (tmp_path / "ok.json").write_text(json.dumps(sample_dict()))
+    assert list(list_sample_deals(tmp_path)) == ["broken", "A / B"]
+
+
+def test_load_sources_returns_provenance_blocks(tmp_path):
+    data = sample_dict()
+    data["_sources"] = {"revenue": {"page": "F-4"}}
+    data["_documents"] = {"10K": "annual report"}
+    assert load_sources(write(tmp_path, data)) == {
+        "documents": {"10K": "annual report"}, "sources": {"revenue": {"page": "F-4"}}, "cross_checks": {}}
+
+
+def test_load_sources_empty_when_file_has_none(tmp_path):
+    assert load_sources(write(tmp_path, sample_dict())) == {"documents": {}, "sources": {}, "cross_checks": {}}
+
+
+def test_md_escapes_dollar_signs():
+    from utils.formatting import md
+    assert md("$ 3,650 and $ 3,608") == r"\$ 3,650 and \$ 3,608"
+    assert md("no dollars") == "no dollars"
