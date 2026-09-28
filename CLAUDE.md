@@ -73,8 +73,9 @@ python -m pytest -v                        # run all tests
   premium 20%; EV/Revenue 2.72x; EV/EBITDA 13.60x; EBITDA margin 20%;
   pro forma EBITDA 580; synergy-adjusted EV/EBITDA 11.72x.
   These must not change.
+- **Step 2 — COMPLETE.** 137 tests pass (95 Step 1 + 31 Step 2a + 11 Step 2b).
 - **Step 2a — Fully diluted shares (treasury stock method): COMPLETE.**
-  126 tests pass (95 Step 1 + 31 in `tests/test_dilution.py`).
+  31 tests in `tests/test_dilution.py`.
   `finance/dilution.py` applies TSM tranche by tranche at the offer price.
   Deals give either `diluted_shares_outstanding` or a `share_build`
   (basic shares, option tranches, RSUs/PSUs); if both, the build is used and
@@ -82,9 +83,24 @@ python -m pytest -v                        # run all tests
   count is also used for unaffected equity value (stated limitation); cash =
   cash and equivalents only; PSUs counted at target.
   Step 1 outputs above are unchanged.
-- **Step 2b — Microsoft / Activision Blizzard test case: NEXT.** Waiting for
-  Anna to collect figures (value, document, page, as-of date) from the ATVI
-  FY2021 10-K, the DEFM14A merger proxy and Microsoft's announcement.
+- **Step 2b — Microsoft / Activision Blizzard test case: COMPLETE and locked.**
+  `data/sample_deals/microsoft_activision.json` (every fact has `_sources`:
+  document, section, PDF/printed page, as-of date, snippet) + 11 tests in
+  `tests/test_activision.py`. Core outputs: fully diluted shares 795.76m;
+  equity value 75,597; EV 68,824 (vs $68.7bn headline, +0.18%); premium 45.3%;
+  EV/Revenue 7.82x; EV/EBITDA 20.39x; unaffected EV/EBITDA 13.41x;
+  EBITDA margin 38.3%. These must not change unless a source figure is corrected.
+  Decisions agreed with Anna: share data from Merger Agreement s.3.7
+  (13 Jan 2022) with the 10-K $57.77 weighted-average strike as one tranche
+  (no range table in the 10-K); gross debt 3,650 (not 3,608 carrying value);
+  EBITDA = operating income 3,259 + D&A 116 = 3,375, capitalised software
+  amortisation NOT added back; `stated_equity_value` empty because the
+  $68.7bn headline is net of cash (compared with EV in `_cross_checks`);
+  synergies 0 (none disclosed); 100% cash. The DEFM14A does not state the
+  unaffected close in dollars: $65.39 comes from Investing.com (screenshot in
+  `data/sources/`) and matches the proxy's 45.3% premium.
+- **Step 3 — Streamlit MVP (Deal Overview + Financials tabs): NEXT.**
+  Confirm scope with Anna before starting.
 
 ## Roadmap (confirm order with Anna before each step)
 2. Fully diluted shares (treasury stock method) + a real test case
