@@ -1,0 +1,134 @@
+{
+  "_comment": "REAL deal, analysed at announcement (18 Jan 2022). Every fact is taken from the documents in _documents, with section, page and snippet in _sources. Money and shares in millions; percentages as decimals. Pages are 'PDF page / printed page' of the saved copies.",
+  "_documents": {
+    "10K": "Activision Blizzard, Inc. Form 10-K for the year ended 31 Dec 2021 — https://www.sec.gov/Archives/edgar/data/718877/000162828022003992/atvi-20211231.htm",
+    "DEFM14A": "Activision Blizzard, Inc. definitive merger proxy statement (DEFM14A), incl. Annex A Merger Agreement — https://www.sec.gov/Archives/edgar/data/718877/000110465922036155/tm225196-4_defm14a.htm",
+    "MSFT_PR": "Microsoft press release, 18 Jan 2022, 'Microsoft to acquire Activision Blizzard to bring the joy and community of gaming to everyone, across every device' — https://news.microsoft.com/source/2022/01/18/microsoft-to-acquire-activision-blizzard-to-bring-the-joy-and-community-of-gaming-to-everyone-across-every-device/",
+    "INVESTING": "Investing.com, Activision Blizzard historical data (daily 'Price' = regular close), accessed 28 Sep 2026 — https://www.investing.com/equities/activision-inc-historical-data — screenshot: data/sources/atvi_close_2022-01-14.png"
+  },
+  "deal": {
+    "acquirer": "Microsoft Corporation",
+    "target": "Activision Blizzard, Inc.",
+    "sector": "Interactive Entertainment",
+    "announcement_date": "2022-01-18",
+    "currency": "USD"
+  },
+  "facts": {
+    "offer_price_per_share": 95.00,
+    "unaffected_share_price": 65.39,
+    "revenue": 8803.0,
+    "ebitda": 3375.0,
+    "ebit": 3259.0,
+    "net_income": 2699.0,
+    "total_debt": 3650.0,
+    "cash": 10423.0,
+    "stated_equity_value": null,
+    "financials_period": "FY2021",
+    "share_build": {
+      "basic_shares": 779.057360,
+      "option_tranches": [
+        {"number": 9.083202, "strike": 57.77}
+      ],
+      "rsus": 13.141790,
+      "as_of": "13 Jan 2022 (Merger Agreement Capitalization Date); option strike at 31 Dec 2021"
+    }
+  },
+  "assumptions": {
+    "cost_synergies": 0.0,
+    "revenue_synergies": 0.0,
+    "revenue_synergy_incremental_margin": null,
+    "financing_cash": 1.0,
+    "financing_debt": 0.0,
+    "financing_stock": 0.0,
+    "tax_rate": null
+  },
+  "_sources": {
+    "offer_price_per_share": {
+      "document": "DEFM14A", "section": "Letter to stockholders", "page": "PDF p.2 / unnumbered", "as_of": "2022-01-18",
+      "snippet": "you will be entitled to receive $95.00 in cash, without interest, for each share of our common stock"
+    },
+    "unaffected_share_price": {
+      "document": "INVESTING", "section": "Activision Blizzard Stock Price History, row 'Jan 14, 2022', column 'Price'", "page": "screenshot", "as_of": "2022-01-14",
+      "snippet": "Jan 14, 2022 | Price 65.39 | Open 63.99 | High 65.54 | Low 62.99 | Vol. 13.50M",
+      "note": "The DEFM14A does not state the close in dollars. Cross-check: it states a premium of 'approximately 45.3% to Activision Blizzard's closing stock price on January 14, 2022, the last trading day prior to the announcement of the merger' (Q&A, PDF p.27 / p.16); 95 / 65.39 - 1 = 45.28%."
+    },
+    "revenue": {
+      "document": "10K", "section": "Consolidated Statements of Operations", "page": "PDF p.72 / F-4", "as_of": "FY ended 2021-12-31",
+      "snippet": "Total net revenues 8,803"
+    },
+    "ebit": {
+      "document": "10K", "section": "Consolidated Statements of Operations", "page": "PDF p.72 / F-4", "as_of": "FY ended 2021-12-31",
+      "snippet": "Operating income 3,259"
+    },
+    "net_income": {
+      "document": "10K", "section": "Consolidated Statements of Operations", "page": "PDF p.72 / F-4", "as_of": "FY ended 2021-12-31",
+      "snippet": "Net income $ 2,699"
+    },
+    "ebitda": {
+      "document": "10K", "section": "Consolidated Statements of Operations (operating income) + Consolidated Statements of Cash Flows (D&A)", "page": "PDF p.72 / F-4 and PDF p.74 / F-6", "as_of": "FY ended 2021-12-31",
+      "snippet": "Operating income 3,259 | Depreciation and amortization 116",
+      "note": "CALCULATED, not reported: EBITDA = operating income 3,259 + D&A 116 = 3,375 (verified in tests/test_activision.py). ASSUMPTION: 'Amortization of capitalized software development costs and intellectual property licenses' (324, cash flow statement) is NOT added back, as it is a recurring game-development cost. Not comparable with the adjusted EBITDA used by Allen & Company in the proxy, which also excludes share-based compensation and one-off items."
+    },
+    "total_debt": {
+      "document": "10K", "section": "Note 13 Debt — Unsecured Senior Notes table", "page": "PDF p.95 / F-27", "as_of": "2021-12-31",
+      "snippet": "Total gross long-term debt $ 3,650 | Unamortized discount and deferred financing costs (42) | Total net carrying amount $ 3,608",
+      "note": "Gross principal used (the amount repayable), not the 3,608 carrying value. Revolver undrawn: 'To date, we have not drawn on the Revolver.' Leases excluded (see README limitations)."
+    },
+    "cash": {
+      "document": "10K", "section": "Consolidated Balance Sheets", "page": "PDF p.71 / F-3", "as_of": "2021-12-31",
+      "snippet": "Cash and cash equivalents $ 10,423",
+      "note": "Cash and cash equivalents only. Short-term investments of 195 (MD&A 'Sources of Liquidity', PDF p.56 / p.55) and restricted cash are excluded."
+    },
+    "share_build.basic_shares": {
+      "document": "DEFM14A", "section": "Annex A Merger Agreement, Section 3.7(a) Company Capitalization", "page": "PDF p.151 / A-25", "as_of": "2022-01-13 5:00 p.m. PT",
+      "snippet": "(A) 779,057,360 shares of Company Common Stock were issued and outstanding (for the avoidance of doubt, excluding shares held in treasury)"
+    },
+    "share_build.option_tranches[0].number": {
+      "document": "DEFM14A", "section": "Annex A Merger Agreement, Section 3.7(c) Stock Reservation", "page": "PDF p.151 / A-25", "as_of": "2022-01-13 5:00 p.m. PT",
+      "snippet": "(iii) outstanding Company Options to acquire 9,083,202 shares of Company Common Stock"
+    },
+    "share_build.option_tranches[0].strike": {
+      "document": "10K", "section": "Note 16 Share-Based Payments — Stock Option Activity table", "page": "PDF p.108 / F-40", "as_of": "2021-12-31",
+      "snippet": "Outstanding stock options at December 31, 2021 9,133 $ 57.77",
+      "note": "LIMITATION: the 10-K gives no table by exercise-price range, so all options are one tranche at the weighted-average strike. Strike is at 31 Dec 2021, count at 13 Jan 2022."
+    },
+    "share_build.rsus": {
+      "document": "DEFM14A", "section": "Annex A Merger Agreement, Section 3.7(c) Stock Reservation", "page": "PDF p.151 / A-25", "as_of": "2022-01-13 5:00 p.m. PT",
+      "snippet": "(i) time-vesting Company Stock-Based Awards representing the right to receive up to 8,717,050 shares ... (ii) performance-vesting Company Stock-Based Awards representing the right to receive up to 4,424,740 shares ..., assuming achievement of applicable performance goals at target level",
+      "note": "rsus = 8.717050 time-vesting RSUs + 4.424740 PSUs at target (verified in tests/test_activision.py). PSUs at target is an agreed methodology choice (5.180833 at maximum)."
+    },
+    "stated_equity_value": {
+      "note": "Deliberately left empty: the $68.7bn headline is net of Activision's net cash, i.e. effectively an enterprise value, not an equity value. See _cross_checks."
+    },
+    "cost_synergies": {
+      "note": "ASSUMPTION: set to zero. Neither Microsoft nor the proxy disclosed a synergy figure, so synergy metrics equal standalone metrics."
+    },
+    "revenue_synergies": {
+      "note": "ASSUMPTION: set to zero (not disclosed)."
+    },
+    "financing_cash": {
+      "document": "MSFT_PR / DEFM14A", "section": "Press release para. 2; proxy 'Financing of the Merger'", "page": "MSFT_PR p.1; DEFM14A PDF p.78 / p.67", "as_of": "2022-01-18",
+      "snippet": "an all-cash transaction | Microsoft has represented to Activision Blizzard that it has available, and will have available at the effective time, the funds necessary to pay the aggregate merger consideration",
+      "note": "100% cash consideration; no new debt or stock disclosed in these documents."
+    },
+    "tax_rate": {
+      "note": "Not provided: with zero synergies an after-tax synergy figure adds nothing."
+    }
+  },
+  "_cross_checks": {
+    "headline_transaction_value": {
+      "value": 68700.0,
+      "compare_to": "enterprise_value",
+      "tolerance": 0.02,
+      "document": "MSFT_PR", "section": "Press release para. 2", "page": "p.1", "as_of": "2022-01-18",
+      "snippet": "Microsoft will acquire Activision Blizzard for $95.00 per share, in an all-cash transaction valued at $68.7 billion, inclusive of Activision Blizzard's net cash.",
+      "note": "Net of the target's net cash, so it is compared with our calculated enterprise value, not equity value. Checked in tests/test_activision.py."
+    },
+    "proxy_premium": {
+      "value": 0.453,
+      "compare_to": "premium",
+      "document": "DEFM14A", "section": "Questions and Answers", "page": "PDF p.27 / p.16", "as_of": "2022-01-14",
+      "snippet": "The per share merger consideration represents a premium of approximately 45.3% to Activision Blizzard's closing stock price on January 14, 2022"
+    }
+  }
+}

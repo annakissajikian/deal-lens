@@ -9,8 +9,8 @@ these results; it is never used as a calculator.
 ## Status
 
 **Step 1 — Transaction engine.** Complete.
-**Step 2 — Fully diluted shares (treasury stock method).** Engine complete;
-real-deal test case (Microsoft / Activision Blizzard) in progress.
+**Step 2 — Fully diluted shares (treasury stock method).** Complete, with a
+real-deal test case: Microsoft / Activision Blizzard (see below).
 Command line only; the interface comes later.
 
 ## Quick start
@@ -21,6 +21,7 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 python run_analysis.py             # analyse the illustrative deal
+python run_analysis.py data/sample_deals/microsoft_activision.json   # real deal
 python -m pytest -v                # run the tests
 ```
 
@@ -37,10 +38,14 @@ deal-lens/
 ├── utils/
 │   ├── io.py                    # JSON file -> DealInputs
 │   └── formatting.py            # 13.60x, 20.0%, $6,000m, n.m.
-├── data/sample_deals/illustrative_deal.json
+├── data/
+│   ├── sample_deals/illustrative_deal.json     # round numbers, checkable by hand
+│   ├── sample_deals/microsoft_activision.json  # real deal, every figure sourced
+│   └── sources/                                # saved evidence (e.g. share price screenshot)
 └── tests/
     ├── test_transaction.py      # hand-calculated finance results
     ├── test_dilution.py         # hand-calculated treasury stock method
+    ├── test_activision.py       # real-deal regression test
     └── test_validation.py       # rejected and flagged inputs
 ```
 
@@ -84,6 +89,31 @@ in `facts` and DealLens calculates it with the treasury stock method:
 ```
 
 If both are given, the share build is used and a difference above 1% is flagged.
+
+## Real deal: Microsoft / Activision Blizzard (announced 18 Jan 2022)
+
+Inputs come from Activision's FY2021 10-K, the DEFM14A merger proxy (including
+the Merger Agreement) and Microsoft's press release. Each figure's document,
+section, page and snippet is recorded under `_sources` in the deal file.
+
+| Output | Value |
+|---|---|
+| Fully diluted shares (TSM, 13 Jan 2022) | 795.76m |
+| Equity value / Enterprise value | $75,597m / $68,824m |
+| Premium to 14 Jan 2022 close ($65.39) | 45.3% (proxy: "approximately 45.3%") |
+| EV / Revenue, EV / EBITDA (FY2021) | 7.82x, 20.39x |
+
+Cross-check: Microsoft's $68.7bn headline is "inclusive of Activision
+Blizzard's net cash", so it is compared with our **enterprise value**
+(+0.18%), not equity value.
+
+Judgements specific to this deal: EBITDA = operating income + D&A (capitalised
+software amortisation not added back); gross debt of 3,650 rather than the
+3,608 carrying value; PSUs at target; all options as one tranche at the
+$57.77 weighted-average strike (no range table in the 10-K); synergies set to
+zero because none were disclosed. The unaffected close is not stated in the
+proxy; it comes from Investing.com (screenshot in `data/sources/`) and matches
+the proxy's 45.3% premium.
 
 ## Limitations
 

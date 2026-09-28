@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 .env
 .streamlit/secrets.toml
+.DS_Store
