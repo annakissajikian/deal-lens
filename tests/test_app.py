@@ -17,6 +17,7 @@ from ui.overview import intentionally_empty
 from utils.io import load_deal, load_sources
 
 APP = str(Path(__file__).parent.parent / "app.py")
+pytestmark = pytest.mark.usefixtures("isolated_deal_folders")   # the illustrative fixture + Activision
 ACTIVISION_FILE = Path(__file__).parent.parent / "data" / "sample_deals" / "microsoft_activision.json"
 ILLUSTRATIVE = "Northwind Holdings / Apex Components"
 ACTIVISION = "Microsoft Corporation / Activision Blizzard, Inc."
@@ -44,7 +45,7 @@ def table_with(at: AppTest, column: str, value: str):
 
 def test_dropdown_lists_both_sample_deals():
     at = AppTest.from_file(APP, default_timeout=30).run()
-    assert at.sidebar.selectbox[0].options[:2] == [ILLUSTRATIVE, ACTIVISION]   # then any "Saved: ..." deals
+    assert at.sidebar.selectbox[0].options == [ILLUSTRATIVE, ACTIVISION]
 
 
 @pytest.mark.parametrize("deal", [ILLUSTRATIVE, ACTIVISION])

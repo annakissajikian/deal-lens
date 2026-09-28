@@ -113,10 +113,10 @@ def deal_from_dict(raw) -> DealInputs:
     )
 
 
-def list_sample_deals(folder: str | Path = SAMPLE_DEALS_DIR) -> dict[str, Path]:
-    """Map an 'Acquirer / Target' label to each deal file in `folder`, in file-name order."""
+def list_sample_deals(folder: str | Path | None = None) -> dict[str, Path]:
+    """Map an 'Acquirer / Target' label to each deal file in `folder` (default data/sample_deals/)."""
     deals: dict[str, Path] = {}
-    for path in sorted(Path(folder).glob("*.json")):
+    for path in sorted(Path(folder or SAMPLE_DEALS_DIR).glob("*.json")):
         try:
             info = json.loads(path.read_text(encoding="utf-8"))["deal"]
             label = f"{info['acquirer']} / {info['target']}"

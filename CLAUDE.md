@@ -12,6 +12,12 @@ analyst, finance tutor and project manager.
 ## Non-negotiable rules
 1. **One step at a time.** Build only the current step, then STOP and wait for
    Anna to confirm it works before starting the next one.
+   *Working mode from 29 Sep 2026 (Anna's request, to finish the project):*
+   for each step build → run all tests → commit when green → give a SHORT
+   summary (what was built, the key finance concept in 3 lines, how to see it
+   in the app) → move straight to the next step. Stop only for decisions that
+   are genuinely Anna's (e.g. DCF assumptions, API key setup, account
+   creation for deployment). All other rules still apply.
 2. **Python calculates; AI interprets.** Core financial metrics are always
    computed deterministically in `finance/`. Never use an LLM as a calculator.
    `finance/` must never import from `ai/`.
@@ -141,26 +147,30 @@ python -m pytest -v                        # run all tests
     keeps `st.session_state.f_saved` as the persistent copy.
   - Tabs that share a label with another view need their own `key`/`default`.
   - No `st.form`: results hide when inputs change after a run.
-- **Step 4 — DCF + WACC / terminal growth sensitivity: NEXT.**
-  Confirm scope with Anna before starting.
+- **Step 4 — DCF + WACC / terminal-growth sensitivity: IN PROGRESS.**
 
-## Roadmap (confirm order with Anna before each step)
-2. Fully diluted shares (treasury stock method) + a real test case
-   (recommended: Microsoft / Activision Blizzard, figures sourced from the
-   Activision 10-K and merger proxy with page references)
-3. Streamlit MVP: Deal Overview + Financials tabs
-3b. "New deal" input form: grouped fields for deal info, facts and
-    assumptions; inline validation errors/warnings; run the analysis;
-    download or save the deal as JSON
-4. DCF + WACC / terminal growth sensitivity
-5. Comparable companies (manual entry + CSV upload)
-6. Precedent transactions + football field chart
-7. Sources & uses, accretion/dilution, pro forma leverage (needs acquirer data)
-8. AI analyst: structured payload with provenance tags + a number checker
-   that rejects any figure the engine didn't produce
-9. Annual-report PDF extraction with page citations (user confirms extracted values)
-10. Deal memo generation + export
-11. Deploy to Streamlit Community Cloud; polish the README for the CV
+## Roadmap (agreed with Anna on 29 Sep 2026)
+Done: 1 transaction engine · 2 fully diluted shares + Activision · 3 Streamlit
+MVP · 3b New deal form.
+4. DCF + WACC / terminal-growth sensitivity (colour-coded heatmap)
+5. Comparable companies + precedent transactions (manual table entry, kept
+   simple) + football field chart
+6. AI analyst: the LLM interprets engine outputs only, never calculates;
+   distinguishes facts / assumptions / calculated / AI interpretation; says
+   "unavailable" rather than inventing data
+7. Deal memo: "Generate Deal Memo" button, downloadable
+8. Visual polish: landing page (DealLens name, one-line pitch, "Analyse a
+   deal" button), small consistent brand (logo, palette, spacing)
+9. Deploy to Streamlit Community Cloud with a public URL
+
+Deals in the app: Microsoft / Activision is a one-click "Example deal", not
+the default view. The illustrative Northwind deal is kept for tests only
+(`tests/fixtures/illustrative_deal.json`).
+
+### Future work (postponed on 29 Sep 2026)
+- Sources & uses, accretion/dilution, pro forma leverage (needs acquirer data)
+- Annual-report PDF extraction with page citations (user confirms values)
+- CSV upload for comps / precedents
 
 ## Architecture
 ```

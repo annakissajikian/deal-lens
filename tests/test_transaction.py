@@ -32,7 +32,7 @@ from finance.transaction import (acquisition_premium, analyse_transaction, enter
                                  equity_value, multiple)
 from utils.io import load_deal
 
-SAMPLE = Path(__file__).parent.parent / "data" / "sample_deals" / "illustrative_deal.json"
+SAMPLE = Path(__file__).parent / "fixtures" / "illustrative_deal.json"
 
 FACTS = DealFacts(offer_price_per_share=60, unaffected_share_price=50, diluted_shares_outstanding=100,
                   revenue=2_500, ebitda=500, ebit=400, net_income=300, total_debt=1_200, cash=400,

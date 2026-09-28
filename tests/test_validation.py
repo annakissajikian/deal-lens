@@ -261,8 +261,9 @@ from utils.io import list_sample_deals, load_sources
 
 
 def test_list_sample_deals_labels_every_file():
+    # the illustrative deal lives in tests/fixtures/, so the app lists only real deals
     deals = list_sample_deals()
-    assert deals["Northwind Holdings / Apex Components"].name == "illustrative_deal.json"
+    assert "Northwind Holdings / Apex Components" not in deals
     assert deals["Microsoft Corporation / Activision Blizzard, Inc."].name == "microsoft_activision.json"
 
 

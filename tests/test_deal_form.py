@@ -20,7 +20,9 @@ from ui.deal_form import BLANK, SHARE_MODES, build_deal_dict, errors_by_group, f
 from utils.io import deal_filename, deal_from_dict, load_deal, save_deal
 
 ROOT = Path(__file__).parent.parent
-SAMPLES = sorted((ROOT / "data" / "sample_deals").glob("*.json"))
+SAMPLES = [ROOT / "tests" / "fixtures" / "illustrative_deal.json",
+           ROOT / "data" / "sample_deals" / "microsoft_activision.json"]
+pytestmark = pytest.mark.usefixtures("isolated_deal_folders")
 APP = str(ROOT / "app.py")
 ILLUSTRATIVE = "Northwind Holdings / Apex Components"
 
@@ -200,12 +202,11 @@ def test_values_survive_switching_modes():
     assert at.number_input(key="f_offer_price_per_share").value == 66.0
 
 
-def test_save_button_writes_and_protects_existing_file(tmp_path, monkeypatch):
-    monkeypatch.setattr("utils.io.USER_DEALS_DIR", tmp_path)
+def test_save_button_writes_and_protects_existing_file(isolated_deal_folders):
     at = new_deal_app()
     click(at, "Run analysis")
     click(at, "Save to data/user_deals/")
-    assert (tmp_path / "northwind_holdings_apex_components.json").exists()
+    assert (isolated_deal_folders / "northwind_holdings_apex_components.json").exists()
     assert any(s.value.startswith("Saved to data/user_deals/") for s in at.success)
     click(at, "Save to data/user_deals/")
     assert any("already exists" in e.value for e in at.error)

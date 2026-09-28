@@ -2,7 +2,7 @@
 Run the transaction engine on a deal file and print the results.
 
     python run_analysis.py                                  # illustrative deal
-    python run_analysis.py data/sample_deals/other.json     # any deal file
+    python run_analysis.py data/sample_deals/microsoft_activision.json     # any deal file
 """
 
 import sys
@@ -13,7 +13,7 @@ from finance.transaction import analyse_transaction
 from utils.formatting import format_value
 from utils.io import load_deal
 
-DEFAULT_DEAL = "data/sample_deals/illustrative_deal.json"
+DEFAULT_DEAL = "tests/fixtures/illustrative_deal.json"   # round numbers, checkable by hand
 
 
 def main(path: str) -> int:

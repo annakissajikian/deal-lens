@@ -23,7 +23,7 @@ python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-python run_analysis.py             # analyse the illustrative deal
+python run_analysis.py             # illustrative test deal (round numbers)
 python run_analysis.py data/sample_deals/microsoft_activision.json   # real deal
 streamlit run app.py               # web app at http://localhost:8501
 python -m pytest -v                # run the tests
@@ -49,11 +49,12 @@ deal-lens/
 │   ├── io.py                    # JSON file -> DealInputs
 │   └── formatting.py            # 13.60x, 20.0%, $6,000m, n.m.
 ├── data/
-│   ├── sample_deals/illustrative_deal.json     # round numbers, checkable by hand
 │   ├── sample_deals/microsoft_activision.json  # real deal, every figure sourced
 │   ├── sources/                                # saved evidence (e.g. share price screenshot)
 │   └── user_deals/                             # deals saved from the app's New deal form
 └── tests/
+    ├── conftest.py              # isolated deal folders for app tests
+    ├── fixtures/illustrative_deal.json  # round-number test deal (not shown in the app)
     ├── test_transaction.py      # hand-calculated finance results
     ├── test_dilution.py         # hand-calculated treasury stock method
     ├── test_activision.py       # real-deal regression test
