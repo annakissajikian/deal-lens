@@ -99,7 +99,28 @@ python -m pytest -v                        # run all tests
   synergies 0 (none disclosed); 100% cash. The DEFM14A does not state the
   unaffected close in dollars: $65.39 comes from Investing.com (screenshot in
   `data/sources/`) and matches the proxy's 45.3% premium.
-- **Step 3 — Streamlit MVP (Deal Overview + Financials tabs): NEXT.**
+- **Step 3 — Streamlit MVP: COMPLETE.** 155 tests pass (18 new: 13 in
+  `tests/test_app.py` using Streamlit's headless `AppTest`, 5 in
+  `tests/test_validation.py`). `streamlit==1.64.0` is the only new dependency.
+  `app.py` + `ui/overview.py` + `ui/financials.py` display results only;
+  nothing is calculated in the UI. Run: `streamlit run app.py`.
+  - Sidebar dropdown lists every file in `data/sample_deals/`
+    (`utils/io.list_sample_deals`); disclaimer in sidebar and footer.
+  - Deal Overview: EV, equity value, premium, EV/EBITDA tiles; deal terms;
+    warnings. A "not provided" warning for a field that is empty AND has a
+    `_sources` note is shown as a blue info note with that reason
+    (`ui/overview.intentionally_empty`). The engine and `run_analysis.py`
+    still emit the warning.
+  - Financials: tables tagged Fact / Fact · derived (a `_sources` note
+    starting "CALCULATED") / Assumption / Calculated / Calculated · uses
+    assumptions; metric notes as captions; Sources section (documents,
+    figures table + "Figure detail" selector, cross-checks, evidence image).
+  - Source text shown via markdown must go through `utils/formatting.md()`,
+    which escapes "$": otherwise Streamlit renders text between two "$" as a
+    maths formula and misquotes filings.
+  - Known cosmetic limitation: long deal names are cut short in the sidebar
+    dropdown (fixing it needs custom CSS).
+- **Step 4 — DCF + WACC / terminal growth sensitivity: NEXT.**
   Confirm scope with Anna before starting.
 
 ## Roadmap (confirm order with Anna before each step)
