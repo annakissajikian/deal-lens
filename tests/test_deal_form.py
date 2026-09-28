@@ -16,7 +16,8 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from finance.transaction import analyse_transaction
-from ui.deal_form import BLANK, SHARE_MODES, build_deal_dict, errors_by_group, form_values_from_dict
+from ui.deal_form import (BLANK, SHARE_MODES, build_deal_dict, errors_by_group, form_values_from_dict,
+                          percent_list)
 from utils.io import deal_filename, deal_from_dict, load_deal, save_deal
 
 ROOT = Path(__file__).parent.parent
@@ -32,7 +33,7 @@ def raw(path: Path) -> dict:
 
 
 def sections(d: dict) -> dict:
-    return {k: d[k] for k in ("deal", "facts", "assumptions")}
+    return {k: d[k] for k in ("deal", "facts", "assumptions", "dcf") if k in d}
 
 
 # ------------------------------------------------ one validation path --
@@ -213,3 +214,37 @@ def test_save_button_writes_and_protects_existing_file(isolated_deal_folders):
     at.checkbox(key="f_overwrite").check().run()
     click(at, "Save to data/user_deals/")
     assert any(s.value.startswith("Saved to data/user_deals/") for s in at.success)
+
+
+# ---------------------------------------------------------------------- DCF --
+
+def test_percent_list():
+    assert percent_list("6.5, 7, 7.5, 8") == [0.065, 0.07, 0.075, 0.08]
+    assert percent_list("") == []
+    assert percent_list("7, x") == [0.07, None]
+
+
+def test_dcf_group_builds_the_dcf_section():
+    values = BLANK | {"dcf_include": True, "dcf_wacc": 10.0, "dcf_terminal_growth": 2.0,
+                      "dcf_valuation_date": "2025-12-31",
+                      "dcf_rows": [{"year": 2026.0, "fcf": 400.0}, {"year": None, "fcf": None},
+                                   {"year": 2027.0, "fcf": 440.0}]}
+    assert build_deal_dict(values)["dcf"] == {
+        "forecast_years": [2026, 2027], "unlevered_fcf": [400.0, 440.0], "wacc": 0.10,
+        "terminal_growth": 0.02, "valuation_date": "2025-12-31", "wacc_range": [], "growth_range": []}
+    assert "dcf" not in build_deal_dict(BLANK)                               # unticked: no DCF
+
+
+def test_form_dcf_matches_hand_calculation():
+    # test_dcf.py: FCF 400/440/484, WACC 10%, g 2%, illustrative facts -> $49.27 per share
+    at = new_deal_app()
+    at.checkbox(key="f_dcf_include").check().run()
+    at.number_input(key="f_dcf_wacc").set_value(10.0).run()
+    at.number_input(key="f_dcf_terminal_growth").set_value(2.0).run()
+    at.session_state["f_table_dcf_rows"] = None
+    at.session_state.f_saved["dcf_rows"] = [{"year": 2026.0, "fcf": 400.0}, {"year": 2027.0, "fcf": 440.0},
+                                            {"year": 2028.0, "fcf": 484.0}]
+    at.session_state["f_version"] += 1                                         # redraw the table
+    at.run()
+    click(at, "Run analysis")
+    assert {m.label: m.value for m in at.main.tabs[3].metric}["DCF value per share"] == "$49.27"

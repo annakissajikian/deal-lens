@@ -17,6 +17,8 @@ def format_value(value: Optional[float], unit: str, currency: str = "USD") -> st
         return f"{value:.2f}x"
     if unit == "percent":
         return f"{value:.1%}"
+    if unit == "percent_2":                 # rates such as WACC 7.25%
+        return f"{value:.2%}"
     if unit == "per_share":
         return f"{symbol}{value:,.2f}"
     if unit == "shares":

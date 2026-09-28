@@ -15,6 +15,8 @@ real-deal test case: Microsoft / Activision Blizzard (see below).
 deal file in `data/sample_deals/`.
 **Step 3b — New deal form.** Enter a deal in the app, validate it, run it,
 and download or save it as JSON.
+**Step 4 — DCF.** Discounted cash flow valuation with a WACC × terminal-growth
+sensitivity heatmap (DCF tab).
 
 ## Quick start
 
@@ -36,6 +38,7 @@ deal-lens/
 ├── app.py                       # Streamlit web app (display only, no calculations)
 ├── run_analysis.py              # command-line demo
 ├── ui/
+│   ├── dcf.py                   # DCF tab: schedule, valuation, sensitivity heatmap
 │   ├── deal_form.py             # New deal form: grouped inputs, inline errors, export
 │   ├── overview.py              # Deal Overview tab: headline tiles, deal terms, warnings
 │   └── financials.py            # Financials tab: tagged tables and sources
@@ -44,6 +47,7 @@ deal-lens/
 │   ├── models.py                # DealInfo, DealFacts, DealAssumptions, Metric
 │   ├── validation.py            # errors (stop) and warnings (review)
 │   ├── dilution.py              # fully diluted shares (treasury stock method)
+│   ├── dcf.py                   # DCF valuation + WACC × growth sensitivity
 │   └── transaction.py           # the formulas
 ├── utils/
 │   ├── io.py                    # JSON file -> DealInputs
@@ -57,6 +61,7 @@ deal-lens/
     ├── fixtures/illustrative_deal.json  # round-number test deal (not shown in the app)
     ├── test_transaction.py      # hand-calculated finance results
     ├── test_dilution.py         # hand-calculated treasury stock method
+    ├── test_dcf.py              # hand-calculated DCF and sensitivity grid
     ├── test_activision.py       # real-deal regression test
     ├── test_app.py              # web app, run headless with Streamlit AppTest
     ├── test_deal_form.py        # New deal form: conversions, saving, headless form runs
@@ -103,6 +108,9 @@ The app only displays results: all numbers come from `finance/`.
 | Options exercised (TSM) | Σ options with strike < offer price, tranche by tranche |
 | Shares repurchased (TSM) | Σ (options × strike) ÷ offer price |
 | Fully diluted shares | Basic shares + options exercised − shares repurchased + RSUs/PSUs |
+| PV of forecast FCF (DCF) | Σ FCF_t ÷ (1 + WACC)^t, end of each year |
+| Terminal value (DCF) | FCF_N × (1 + g) ÷ (WACC − g) (Gordon growth) |
+| DCF value per share | (Σ PV + PV of terminal value − net debt) ÷ fully diluted shares |
 | Transaction equity value | Offer price × Fully diluted shares |
 | Transaction enterprise value | Equity value + Debt − Cash |
 | Acquisition premium | Offer price ÷ Unaffected (pre-announcement) price − 1 |
@@ -155,6 +163,15 @@ zero because none were disclosed. The unaffected close is not stated in the
 proxy; it comes from Investing.com (screenshot in `data/sources/`) and matches
 the proxy's 45.3% premium.
 
+## DCF (Activision example)
+
+Management's unlevered free cash flow forecast for 2022E–2026E (DEFM14A p.51)
+is discounted to 31 Dec 2021 at the midpoint of Allen & Company's ranges
+(WACC 7.25%, terminal growth 2.50%; p.57): **$99.03 per share**, so the $95.00
+offer is 4.1% below the DCF value. Over Allen & Company's full ranges the
+heatmap gives **$83.52–$122.79** against their published **$84.73–$123.87**.
+Terminal value is 82% of DCF EV, which the app flags.
+
 ## Limitations
 
 - Enterprise value excludes preferred stock, minority interests, leases and
@@ -167,6 +184,10 @@ the proxy's 45.3% premium.
   can straddle the offer price; a finer table gives a more precise result.
 - RSUs and PSUs count one share each; PSUs are counted at target.
 - Convertible securities and warrants are not yet modelled.
+- DCF: end-of-year discounting (no mid-year convention); Gordon-growth
+  terminal value only; per-share value uses the fully diluted share count at
+  the offer price; the forecast cash flows are taken as given (no revenue or
+  margin build).
 - A stated headline equity value is only a cross-check; the calculated figure
   is always used.
 - If no incremental margin is given, revenue synergies use the target's

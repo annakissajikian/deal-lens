@@ -13,8 +13,10 @@ in finance/. Nothing is calculated here.
 
 import streamlit as st
 
+from finance.dcf import analyse_dcf
 from finance.models import DealInputError
 from finance.transaction import analyse_transaction
+from ui.dcf import render_dcf
 from ui.deal_form import render_deal_form
 from ui.financials import render_financials
 from ui.overview import render_overview
@@ -50,11 +52,13 @@ def show_saved_deal(label: str) -> None:
     st.caption(f"{info.sector} · Announced {announced} · {info.currency} millions · "
                f"Financials {deal.facts.financials_period}")
     sources = load_sources(deals[label])
-    overview_tab, financials_tab = st.tabs(["Deal Overview", "Financials"])
+    overview_tab, financials_tab, dcf_tab = st.tabs(["Deal Overview", "Financials", "DCF"])
     with overview_tab:
         render_overview(analysis, sources)
     with financials_tab:
         render_financials(analysis, sources)
+    with dcf_tab:
+        render_dcf(analysis, analyse_dcf(deal))
 
 
 if mode == MODES[1]:

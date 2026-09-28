@@ -35,6 +35,18 @@ EBITDA margin         = 3,375 / 8,803                        = 38.34%
 
 Synergies are zero (none disclosed), so pro forma EBITDA = 3,375 and the
 synergy-adjusted multiple equals EV / EBITDA. Financing is 100% cash.
+
+DCF (management UFCF 2022E–2026E, WACC 7.25%, g 2.50%, valued at 31 Dec 2021)
+PV of FCF      = 1,768/1.0725 + 3,387/1.0725^2 + 3,396/1.0725^3 + 3,773/1.0725^4 + 3,886/1.0725^5
+               = 1,648.48 + 2,944.56 + 2,752.81 + 2,851.66 + 2,738.52   = 12,936.03
+Terminal value = 3,886 × 1.025 / (0.0725 − 0.025) = 3,983.15 / 0.0475   = 83,855.79
+PV of TV       = 83,855.79 × 1/1.0725^5 (0.704715)                     = 59,094.43
+DCF EV         = 12,936.03 + 59,094.43                                  = 72,030.46
+DCF equity     = 72,030.46 − (−6,773)                                   = 78,803.46
+Per share      = 78,803.46 / 795.758809                                 = $99.03
+TV share 82.0%; offer $95.00 is 4.07% below the DCF value.
+Heatmap corners: WACC 8.00% / g 2.25% = $83.52; WACC 6.50% / g 2.75% = $122.79
+(Allen & Company, same ranges: $84.73 – $123.87).
 """
 
 import json
@@ -42,6 +54,7 @@ from pathlib import Path
 
 import pytest
 
+from finance.dcf import analyse_dcf
 from finance.transaction import analyse_transaction
 from utils.io import load_deal
 
@@ -142,3 +155,41 @@ def test_expected_warnings_only(r):
     assert len(r.warnings) == 2
     joined = " ".join(r.warnings)
     assert "stated_equity_value" in joined and "tax_rate" in joined
+
+
+# ---------------------------------------------------------------------- DCF --
+
+@pytest.fixture(scope="module")
+def dcf():
+    return analyse_dcf(load_deal(DEAL_FILE))
+
+
+def test_dcf_inputs_are_the_proxy_forecast():
+    d = RAW["dcf"]
+    assert d["unlevered_fcf"] == [1768.0, 3387.0, 3396.0, 3773.0, 3886.0]       # proxy p.51, 2022E–2026E
+    assert d["wacc"] == pytest.approx((0.065 + 0.08) / 2)                     # Allen & Co midpoint
+    assert d["terminal_growth"] == pytest.approx((0.0225 + 0.0275) / 2)
+    assert all(f"dcf.{k}" in RAW["_sources"] for k in ("unlevered_fcf", "wacc", "terminal_growth"))
+
+
+def test_dcf_valuation(dcf):
+    assert dcf.value("pv_forecast_fcf") == pytest.approx(12_936.03, abs=0.01)
+    assert dcf.value("terminal_value") == pytest.approx(83_855.79, abs=0.01)
+    assert dcf.value("pv_terminal_value") == pytest.approx(59_094.43, abs=0.01)
+    assert dcf.value("dcf_enterprise_value") == pytest.approx(72_030.46, abs=0.01)
+    assert dcf.value("dcf_equity_value") == pytest.approx(78_803.46, abs=0.01)
+    assert dcf.value("dcf_value_per_share") == pytest.approx(99.03, abs=0.005)
+    assert dcf.value("tv_share_of_ev") == pytest.approx(0.8204, abs=0.0001)
+    assert dcf.value("offer_vs_dcf") == pytest.approx(-0.0407, abs=0.0001)
+
+
+def test_dcf_range_close_to_allen_and_company(dcf):
+    low, high = dcf.grid_range()
+    assert low == pytest.approx(83.52, abs=0.005) and high == pytest.approx(122.79, abs=0.005)
+    allen = RAW["_cross_checks"]["allen_dcf_range"]
+    assert abs(low / allen["low"] - 1) < 0.02 and abs(high / allen["high"] - 1) < 0.02   # within 2%
+
+
+def test_dcf_warns_that_terminal_value_dominates(dcf):
+    assert dcf.warnings == ["Terminal value is 82% of DCF enterprise value: the valuation depends mostly on "
+                            "the perpetuity assumptions (WACC and g)."]

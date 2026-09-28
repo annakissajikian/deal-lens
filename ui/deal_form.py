@@ -16,8 +16,10 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
+from finance.dcf import analyse_dcf
 from finance.models import DealInputError
 from finance.transaction import analyse_transaction
+from ui.dcf import render_dcf
 from ui.financials import render_financials
 from ui.overview import render_overview
 from utils.formatting import SYMBOLS, md
@@ -35,7 +37,10 @@ GROUPS = {
     "Target financials": ("revenue", "ebitda", "ebit", "net_income", "total_debt", "cash",
                           "stated_equity_value", "financials_period"),
     "Assumptions": ("cost_synergies", "revenue_synergies", "Financing mix") + PERCENT_FIELDS,
+    "DCF": ("dcf",),
 }
+# Editable tables: form key -> columns. Their rows live in st.session_state, not in widgets.
+TABLES = {"option_tranches": ("number", "strike"), "dcf_rows": ("year", "fcf")}
 
 BLANK = {
     "acquirer": "", "target": "", "sector": "", "announcement_date": None, "currency": "USD",
@@ -46,6 +51,8 @@ BLANK = {
     "total_debt": None, "cash": None, "stated_equity_value": None,
     "cost_synergies": 0.0, "revenue_synergies": 0.0, "revenue_synergy_incremental_margin": None,
     "financing_cash": 100.0, "financing_debt": 0.0, "financing_stock": 0.0, "tax_rate": None,
+    "dcf_include": False, "dcf_rows": [], "dcf_wacc": None, "dcf_terminal_growth": None,
+    "dcf_valuation_date": "", "dcf_wacc_range": "", "dcf_growth_range": "",
 }
 SHARE_MODES = ("Enter fully diluted shares", "Build with treasury stock method")
 
@@ -71,7 +78,7 @@ def build_deal_dict(v: dict) -> dict:
     else:
         facts["diluted_shares_outstanding"] = v["diluted_shares_outstanding"]
     d = v["announcement_date"]
-    return {
+    deal = {
         "_comment": f"Entered via the DealLens form on {date.today().isoformat()}. "
                     f"Figures are not source-verified.",
         "deal": {"acquirer": v["acquirer"].strip(), "target": v["target"].strip(),
@@ -81,6 +88,27 @@ def build_deal_dict(v: dict) -> dict:
         "assumptions": {k: pct(v[k]) if k in PERCENT_FIELDS else v[k]
                         for k in ("cost_synergies", "revenue_synergies") + PERCENT_FIELDS},
     }
+    if v["dcf_include"]:
+        rows = [r for r in v["dcf_rows"] if r.get("year") is not None or r.get("fcf") is not None]
+        year = lambda y: int(y) if isinstance(y, float) and y.is_integer() else y
+        deal["dcf"] = {"forecast_years": [year(r.get("year")) for r in rows],
+                       "unlevered_fcf": [r.get("fcf") for r in rows],
+                       "wacc": pct(v["dcf_wacc"]), "terminal_growth": pct(v["dcf_terminal_growth"]),
+                       "valuation_date": v["dcf_valuation_date"].strip(),
+                       "wacc_range": percent_list(v["dcf_wacc_range"]),
+                       "growth_range": percent_list(v["dcf_growth_range"])}
+    return deal
+
+
+def percent_list(text: str) -> list:
+    """'6.5, 7, 7.5' -> [0.065, 0.07, 0.075]; a token that is not a number becomes None (-> error)."""
+    out = []
+    for token in (t.strip() for t in text.split(",") if t.strip()):
+        try:
+            out.append(round(float(token) / 100, 10))
+        except ValueError:
+            out.append(None)
+    return out
 
 
 def form_values_from_dict(raw: dict) -> dict:
@@ -99,6 +127,16 @@ def form_values_from_dict(raw: dict) -> dict:
     for k in ("cost_synergies", "revenue_synergies") + PERCENT_FIELDS:
         if k in a:
             v[k] = round(a[k] * 100, 10) if k in PERCENT_FIELDS and a[k] is not None else a[k]
+    dcf = raw.get("dcf")
+    if dcf:
+        as_pct = lambda x: None if x is None else round(x * 100, 10)
+        v.update(dcf_include=True,
+                 dcf_rows=[{"year": y, "fcf": c} for y, c in zip(dcf.get("forecast_years", []),
+                                                                   dcf.get("unlevered_fcf", []))],
+                 dcf_wacc=as_pct(dcf.get("wacc")), dcf_terminal_growth=as_pct(dcf.get("terminal_growth")),
+                 dcf_valuation_date=dcf.get("valuation_date", ""),
+                 dcf_wacc_range=", ".join(f"{as_pct(x):g}" for x in dcf.get("wacc_range", [])),
+                 dcf_growth_range=", ".join(f"{as_pct(x):g}" for x in dcf.get("growth_range", [])))
     return v
 
 
@@ -119,22 +157,33 @@ def errors_by_group(errors: list[str]) -> dict[str, list[str]]:
 
 def _values() -> dict:
     saved = st.session_state.f_saved
-    v = {k: st.session_state.get(f"f_{k}", saved[k]) for k in BLANK if k != "option_tranches"}
-    table = st.session_state.get("f_table")
-    v["option_tranches"] = saved["option_tranches"] if table is None else [
-        {c: (None if pd.isna(row[c]) else float(row[c])) for c in ("number", "strike")}
-        for _, row in table.iterrows()]
+    v = {k: st.session_state.get(f"f_{k}", saved[k]) for k in BLANK if k not in TABLES}
+    for name, columns in TABLES.items():
+        table = st.session_state.get(f"f_table_{name}")
+        v[name] = saved[name] if table is None else [
+            {c: (None if pd.isna(row[c]) else float(row[c])) for c in columns} for _, row in table.iterrows()]
     return v
 
 
 def _load(values: dict) -> None:
     """Put `values` into the form (on first use and for 'Start from')."""
     for k, val in values.items():
-        if k != "option_tranches":
+        if k not in TABLES:
             st.session_state[f"f_{k}"] = val
     st.session_state.f_saved = dict(values)
-    st.session_state.f_table = None
-    st.session_state.f_version = st.session_state.get("f_version", 0) + 1   # fresh tranche table
+    for name in TABLES:
+        st.session_state[f"f_table_{name}"] = None
+    st.session_state.f_version = st.session_state.get("f_version", 0) + 1   # fresh tables
+
+
+def _table_editor(name: str, column_config: dict) -> None:
+    """Editable table whose rows survive reruns (see the note above _values)."""
+    key = f"f_{name}_{st.session_state.f_version}"
+    if key not in st.session_state:          # table (re)drawn: start from the saved rows
+        st.session_state[f"f_base_{name}"] = st.session_state.f_saved[name]
+    base = pd.DataFrame(st.session_state[f"f_base_{name}"] or [], columns=list(TABLES[name]), dtype=float)
+    st.session_state[f"f_table_{name}"] = st.data_editor(
+        base, key=key, num_rows="dynamic", hide_index=True, column_config=column_config)
 
 
 def _start_from(deals: dict) -> None:
@@ -149,7 +198,8 @@ def _run() -> None:
     raw = build_deal_dict(_values())
     st.session_state.f_save_msg = None
     try:
-        st.session_state.f_result = (raw, analyse_transaction(deal_from_dict(raw)))
+        deal = deal_from_dict(raw)
+        st.session_state.f_result = (raw, analyse_transaction(deal), analyse_dcf(deal))
         st.session_state.f_errors = []
     except DealInputError as exc:
         st.session_state.f_result, st.session_state.f_errors = None, exc.errors
@@ -175,15 +225,15 @@ def render_deal_form(deals: dict) -> None:
         _load(BLANK)
         st.session_state.update(f_errors=[], f_result=None, f_save_msg=None)
     for k, val in st.session_state.f_saved.items():            # restore values Streamlit dropped
-        if k != "option_tranches" and f"f_{k}" not in st.session_state:
+        if k not in TABLES and f"f_{k}" not in st.session_state:
             st.session_state[f"f_{k}"] = val
 
     st.title("New deal")
     st.caption("Enter the deal, press Run analysis, then review the results tabs. "
                "Percentages are typed as 25 for 25%. Leave optional fields blank if not available.")
     # Own key + default: otherwise Streamlit reuses the saved-deal view's active "Deal Overview" tab
-    inputs_tab, overview_tab, financials_tab = st.tabs(["Inputs", "Deal Overview", "Financials"],
-                                                       key="f_tabs", default="Inputs")
+    inputs_tab, overview_tab, financials_tab, dcf_tab = st.tabs(
+        ["Inputs", "Deal Overview", "Financials", "DCF"], key="f_tabs", default="Inputs")
 
     with inputs_tab:
         st.selectbox("Start from", ["Blank"] + list(deals), key="f_start",
@@ -223,14 +273,9 @@ def render_deal_form(deals: dict) -> None:
             c3.text_input("As of (dates of the counts)", key="f_as_of")
             st.caption("Option tranches: one row per exercise-price range (millions of options, "
                        "weighted-average strike). Add rows with the + below the table.")
-            key = f"f_tranches_{st.session_state.f_version}"
-            if key not in st.session_state:        # table (re)drawn: start from the saved rows
-                st.session_state.f_table_base = st.session_state.f_saved["option_tranches"]
-            base = pd.DataFrame(st.session_state.f_table_base or [], columns=["number", "strike"], dtype=float)
-            st.session_state.f_table = st.data_editor(
-                base, key=key, num_rows="dynamic", hide_index=True, column_config={
-                    "number": st.column_config.NumberColumn("Options (m)", format="%.6f"),
-                    "strike": st.column_config.NumberColumn("Strike", format="%.2f")})
+            _table_editor("option_tranches", {
+                "number": st.column_config.NumberColumn("Options (m)", format="%.6f"),
+                "strike": st.column_config.NumberColumn("Strike", format="%.2f")})
         _group_errors("Share count")
 
         st.subheader("Target financials · facts (millions)")
@@ -260,6 +305,24 @@ def render_deal_form(deals: dict) -> None:
         c3.number_input("Financed with stock, %", key="f_financing_stock", value=None, format="%.2f")
         _group_errors("Assumptions")
 
+        st.subheader("DCF · assumptions (optional)")
+        st.checkbox("Include a DCF valuation", key="f_dcf_include")
+        if st.session_state.f_dcf_include:
+            c1, c2, c3 = st.columns(3)
+            c1.number_input("WACC, %", key="f_dcf_wacc", value=None, format="%.2f")
+            c2.number_input("Terminal growth, %", key="f_dcf_terminal_growth", value=None, format="%.2f")
+            c3.text_input("Valuation date", key="f_dcf_valuation_date", help="e.g. 2025-12-31")
+            c1, c2 = st.columns(2)
+            c1.text_input("Heatmap WACC values, % (optional)", key="f_dcf_wacc_range",
+                          help="Comma-separated, e.g. 6.5, 7, 7.5, 8. Blank = WACC ± 1% in 0.5% steps.")
+            c2.text_input("Heatmap growth values, % (optional)", key="f_dcf_growth_range",
+                          help="Comma-separated, e.g. 2.25, 2.5, 2.75. Blank = g ± 0.5% in 0.25% steps.")
+            st.caption("Forecast: one row per year (consecutive years), unlevered free cash flow in millions.")
+            _table_editor("dcf_rows", {
+                "year": st.column_config.NumberColumn("Year", format="%d", step=1),
+                "fcf": st.column_config.NumberColumn("Unlevered FCF (m)", format="%.2f")})
+        _group_errors("DCF")
+
         st.button("Run analysis", type="primary", on_click=_run)
 
     st.session_state.f_saved = _values()
@@ -274,13 +337,14 @@ def render_deal_form(deals: dict) -> None:
         elif stale:
             st.info("Inputs have changed since the last run: press Run analysis to update the results.")
 
-    for tab, render in ((overview_tab, lambda a: render_overview(a, NO_SOURCES)),
-                        (financials_tab, lambda a: render_financials(a, NO_SOURCES))):
+    for tab, render in ((overview_tab, lambda r: render_overview(r[1], NO_SOURCES)),
+                        (financials_tab, lambda r: render_financials(r[1], NO_SOURCES)),
+                        (dcf_tab, lambda r: render_dcf(r[1], r[2]))):
         with tab:
             if result is None or stale:
                 st.info("Run the analysis from the Inputs tab to see results here.")
             else:
-                render(result[1])
+                render(result)
 
 
 def _render_export(raw: dict) -> None:

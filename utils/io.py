@@ -10,6 +10,9 @@ Keys starting with "_" are treated as comments and ignored.
 "facts" may contain an optional "share_build" object (basic_shares, rsus,
 as_of and a list of option_tranches, each {number, strike}).
 
+An optional "dcf" section holds the DCF inputs (forecast_years, unlevered_fcf,
+wacc, terminal_growth, valuation_date, wacc_range, growth_range).
+
 Every structural problem (wrong types, missing sections, bad dates) is raised
 as a DealInputError, never as a raw Python error.
 
@@ -29,7 +32,7 @@ from dataclasses import fields
 from datetime import date
 from pathlib import Path
 
-from finance.models import (DealAssumptions, DealFacts, DealInfo, DealInputError, DealInputs,
+from finance.models import (DCFInputs, DealAssumptions, DealFacts, DealInfo, DealInputError, DealInputs,
                             OptionTranche, ShareBuild)
 
 SECTIONS = {"deal": DealInfo, "facts": DealFacts, "assumptions": DealAssumptions}
@@ -110,7 +113,20 @@ def deal_from_dict(raw) -> DealInputs:
         info=_build("deal", DealInfo, deal),
         facts=_build("facts", DealFacts, facts),
         assumptions=_build("assumptions", DealAssumptions, raw["assumptions"]),
+        dcf=_parse_dcf(raw["dcf"]) if raw.get("dcf") is not None else None,
     )
+
+
+def _parse_dcf(raw) -> DCFInputs:
+    if not isinstance(raw, dict):
+        raise DealInputError([f"Section 'dcf' must be an object {{...}}, got {type(raw).__name__}."])
+    data = dict(raw)
+    for key in ("forecast_years", "unlevered_fcf", "wacc_range", "growth_range"):
+        if key in data:
+            if not isinstance(data[key], list):
+                raise DealInputError([f"dcf.{key} must be a list [...], got {type(data[key]).__name__}."])
+            data[key] = tuple(data[key])
+    return _build("dcf", DCFInputs, data)
 
 
 def list_sample_deals(folder: str | Path | None = None) -> dict[str, Path]:

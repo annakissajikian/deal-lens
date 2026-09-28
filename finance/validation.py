@@ -13,7 +13,8 @@ from datetime import date
 from numbers import Real
 
 from .dilution import diluted_share_count
-from .models import DealAssumptions, DealFacts, DealInputError, DealInputs, OptionTranche, ShareBuild
+from .models import (DCFInputs, DealAssumptions, DealFacts, DealInputError, DealInputs, OptionTranche,
+                     ShareBuild)
 
 FINANCING_TOLERANCE = 0.001        # financing mix must total 100% +/- 0.1%
 EQUITY_VALUE_TOLERANCE = 0.02      # stated vs calculated equity value: 2%
@@ -93,6 +94,8 @@ def validate(inputs: DealInputs) -> list[str]:
 
     if f.share_build is not None:
         errors += _share_build_errors(f.share_build)
+    if inputs.dcf is not None:
+        errors += _dcf_errors(inputs.dcf)
 
     mix_total = a.financing_cash + a.financing_debt + a.financing_stock
     if abs(mix_total - 1) > FINANCING_TOLERANCE:
@@ -126,6 +129,42 @@ def _share_build_errors(build) -> list[str]:
             continue
         check(f"share_build.option_tranches[{i}].number", t.number)
         check(f"share_build.option_tranches[{i}].strike", t.strike)
+    return errors
+
+
+def _dcf_errors(d) -> list[str]:
+    """Checks for the DCF inputs; DCF warnings are produced by finance.dcf."""
+    if not isinstance(d, DCFInputs):
+        return [f"dcf must be a DCFInputs (got {type(d).__name__})."]
+    errors: list[str] = []
+    years, fcf = d.forecast_years, d.unlevered_fcf
+    if not isinstance(years, (list, tuple)) or not years:
+        errors.append("dcf.forecast_years must be a non-empty list of years.")
+    elif not all(isinstance(y, int) and not isinstance(y, bool) for y in years):
+        errors.append("dcf.forecast_years must be whole years (e.g. 2022).")
+    elif any(b - a != 1 for a, b in zip(years, years[1:])):
+        errors.append("dcf.forecast_years must be consecutive and increasing (e.g. 2022, 2023, 2024).")
+    if not isinstance(fcf, (list, tuple)) or not fcf:
+        errors.append("dcf.unlevered_fcf must be a non-empty list of cash flows.")
+    elif not all(_is_number(x) for x in fcf):
+        errors.append("dcf.unlevered_fcf must contain only finite numbers.")
+    elif isinstance(years, (list, tuple)) and len(fcf) != len(years):
+        errors.append(f"dcf.unlevered_fcf must have one value per forecast year "
+                      f"({len(years)} years, {len(fcf)} values).")
+    wacc, g = d.wacc, d.terminal_growth
+    for name, v in (("wacc", wacc), ("terminal_growth", g)):
+        if not _is_number(v):
+            errors.append(f"dcf.{name} must be a finite number (got {v!r}).")
+    if _is_number(wacc) and not 0 < wacc < 1:
+        errors.append(f"dcf.wacc must be a decimal between 0 and 1 (e.g. 0.08 for 8%), got {wacc}.")
+    if _is_number(g) and not -0.5 < g < 0.5:
+        errors.append(f"dcf.terminal_growth must be a decimal (e.g. 0.025 for 2.5%), got {g}.")
+    if _is_number(wacc) and _is_number(g) and wacc <= g:
+        errors.append("dcf.wacc must be greater than dcf.terminal_growth (the Gordon growth formula "
+                      "divides by WACC − g).")
+    for name, axis, low in (("wacc_range", d.wacc_range, 0.0), ("growth_range", d.growth_range, -0.5)):
+        if not isinstance(axis, (list, tuple)) or not all(_is_number(x) and low < x < 1 for x in axis):
+            errors.append(f"dcf.{name} must be a list of decimals (e.g. 0.07 for 7%).")
     return errors
 
 

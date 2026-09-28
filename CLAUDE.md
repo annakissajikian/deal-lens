@@ -147,7 +147,18 @@ python -m pytest -v                        # run all tests
     keeps `st.session_state.f_saved` as the persistent copy.
   - Tabs that share a label with another view need their own `key`/`default`.
   - No `st.form`: results hide when inputs change after a run.
-- **Step 4 — DCF + WACC / terminal-growth sensitivity: IN PROGRESS.**
+- **Step 4 — DCF + WACC / terminal-growth sensitivity: COMPLETE.** 216 tests.
+  `finance/dcf.py` (end-of-year discounting, Gordon growth TV; all DCF
+  metrics depend_on_assumptions); optional `dcf` JSON section → `DCFInputs`;
+  WACC ≤ g is an ERROR, TV > 75% of EV / g > 4% / WACC outside 5–20% are
+  WARNINGs. DCF tab (saved deals and form) with Altair heatmap: diverging
+  blue (above offer) / grey `#f0efec` (at offer) / red (below), Lab
+  interpolation. Layered Altair charts that mix a numeric colour scale with
+  literal text colours need `resolve_scale(color="independent")`, otherwise
+  they render at zero height. Activision (agreed with Anna): proxy management
+  UFCF 2022E–2026E, WACC 7.25% / g 2.50% (Allen & Co midpoints) → $99.03 per
+  share, EV 72,030; grid $83.52–$122.79 vs Allen $84.73–$123.87. Locked.
+- **Step 5 — Comps + precedents + football field: NEXT.**
 
 ## Roadmap (agreed with Anna on 29 Sep 2026)
 Done: 1 transaction engine · 2 fully diluted shares + Activision · 3 Streamlit

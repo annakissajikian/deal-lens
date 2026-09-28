@@ -42,6 +42,15 @@
     "financing_stock": 0.0,
     "tax_rate": null
   },
+  "dcf": {
+    "forecast_years": [2022, 2023, 2024, 2025, 2026],
+    "unlevered_fcf": [1768.0, 3387.0, 3396.0, 3773.0, 3886.0],
+    "wacc": 0.0725,
+    "terminal_growth": 0.025,
+    "valuation_date": "2021-12-31",
+    "wacc_range": [0.065, 0.07, 0.075, 0.08],
+    "growth_range": [0.0225, 0.025, 0.0275]
+  },
   "_sources": {
     "offer_price_per_share": {
       "document": "DEFM14A", "section": "Letter to stockholders", "page": "PDF p.2 / unnumbered", "as_of": "2022-01-18",
@@ -113,6 +122,30 @@
     },
     "tax_rate": {
       "note": "Not provided: with zero synergies an after-tax synergy figure adds nothing."
+    },
+    "dcf.unlevered_fcf": {
+      "document": "DEFM14A", "section": "Financial Forecasts — Management Forecasts (January 2022 forecasts), row 'Unlevered Free Cash Flow'", "page": "PDF p.62 / p.51", "as_of": "January 2022",
+      "snippet": "Unlevered Free Cash Flow $2,235 $1,768 $ 3,387 $ 3,396 $ 3,773 $ 3,886 (2021E–2026E)",
+      "note": "ASSUMPTION (management forecast, not reported results). 2022E–2026E used; 2021E is excluded because the valuation date is 31 Dec 2021. The proxy's UFCF deducts stock-based compensation and capitalised software development."
+    },
+    "dcf.forecast_years": {
+      "document": "DEFM14A", "section": "Financial Forecasts — Management Forecasts", "page": "PDF p.62 / p.51", "as_of": "January 2022",
+      "snippet": "Fiscal Year Ending December 31, 2021E 2022E 2023E 2024E 2025E 2026E"
+    },
+    "dcf.valuation_date": {
+      "document": "DEFM14A", "section": "Opinion of Activision Blizzard's Financial Advisor — Discounted Cash Flow Analysis", "page": "PDF p.67 / p.56", "as_of": "2022-01-18",
+      "snippet": "calculating, based on the Activision Blizzard forecasts, the estimated present value (as of December 31, 2021) of the standalone unlevered, after-tax free cash flows",
+      "note": "Cash flows are discounted at the end of each year from this date (DealLens convention)."
+    },
+    "dcf.wacc": {
+      "document": "DEFM14A", "section": "Opinion of Activision Blizzard's Financial Advisor — Discounted Cash Flow Analysis", "page": "PDF p.68 / p.57", "as_of": "2022-01-18",
+      "snippet": "a selected range of perpetuity growth rates of 2.25% to 2.75% and a selected range of discount rates of 6.50% to 8.00%",
+      "note": "ASSUMPTION agreed with Anna: midpoint of Allen & Company's range, 7.25%. The heatmap uses the full 6.50%–8.00% range."
+    },
+    "dcf.terminal_growth": {
+      "document": "DEFM14A", "section": "Opinion of Activision Blizzard's Financial Advisor — Discounted Cash Flow Analysis", "page": "PDF p.68 / p.57", "as_of": "2022-01-18",
+      "snippet": "a selected range of perpetuity growth rates of 2.25% to 2.75%",
+      "note": "ASSUMPTION agreed with Anna: midpoint of Allen & Company's range, 2.50%. The heatmap uses the full 2.25%–2.75% range."
     }
   },
   "_cross_checks": {
@@ -123,6 +156,14 @@
       "document": "MSFT_PR", "section": "Press release para. 2", "page": "p.1", "as_of": "2022-01-18",
       "snippet": "Microsoft will acquire Activision Blizzard for $95.00 per share, in an all-cash transaction valued at $68.7 billion, inclusive of Activision Blizzard's net cash.",
       "note": "Net of the target's net cash, so it is compared with our calculated enterprise value, not equity value. Checked in tests/test_activision.py."
+    },
+    "allen_dcf_range": {
+      "value": null,
+      "low": 84.73, "high": 123.87,
+      "compare_to": "dcf_value_per_share",
+      "document": "DEFM14A", "section": "Opinion of Activision Blizzard's Financial Advisor — Discounted Cash Flow Analysis", "page": "PDF p.68 / p.57", "as_of": "2022-01-18",
+      "snippet": "Implied Equity Value Per Share Reference Range: $84.73 – $123.87",
+      "note": "Allen & Company's DCF range over the same WACC and growth ranges. DealLens gives $83.52–$122.79 (corner cells of the heatmap); the small gap reflects discounting conventions. Checked in tests/test_activision.py."
     },
     "proxy_premium": {
       "value": 0.453,

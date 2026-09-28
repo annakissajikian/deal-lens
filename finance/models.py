@@ -91,15 +91,33 @@ class DealAssumptions:
 
 
 @dataclass(frozen=True)
+class DCFInputs:
+    """
+    Discounted cash flow inputs (Step 4). Every field is an ASSUMPTION: even a
+    management forecast taken from a filing is a forecast, not a reported fact.
+    Cash flows are discounted at the end of each year from the valuation date.
+    """
+    forecast_years: tuple[int, ...]           # consecutive years, e.g. (2022, ..., 2026)
+    unlevered_fcf: tuple[float, ...]          # millions, one per forecast year
+    wacc: float                               # discount rate, decimal (0.0725 = 7.25%)
+    terminal_growth: float                    # perpetuity growth after the last year, decimal
+    valuation_date: str = ""                  # label only, e.g. "2021-12-31"
+    wacc_range: tuple[float, ...] = ()        # sensitivity axis; empty = WACC ± 1% in 0.5% steps
+    growth_range: tuple[float, ...] = ()      # sensitivity axis; empty = g ± 0.5% in 0.25% steps
+
+
+@dataclass(frozen=True)
 class DealInputs:
     info: DealInfo
     facts: DealFacts
     assumptions: DealAssumptions
+    dcf: Optional[DCFInputs] = None
 
     def provenance(self) -> dict[str, str]:
         """Map every input field to 'fact' or 'assumption'."""
         tags = {f.name: "fact" for f in fields(DealFacts)}
         tags.update({f.name: "assumption" for f in fields(DealAssumptions)})
+        tags.update({f.name: "assumption" for f in fields(DCFInputs)})
         return tags
 
 

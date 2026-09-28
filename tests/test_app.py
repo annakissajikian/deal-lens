@@ -31,8 +31,9 @@ def run_app(deal: str) -> AppTest:
     return at
 
 
-def tiles(at: AppTest) -> dict[str, str]:
-    return {m.label: m.value for m in at.metric}
+def tiles(at: AppTest, tab: int = 0) -> dict[str, str]:
+    """Metric tiles on one tab (0 = Deal Overview, 2 = DCF)."""
+    return {m.label: m.value for m in at.main.tabs[tab].metric}
 
 
 def table_with(at: AppTest, column: str, value: str):
@@ -86,8 +87,8 @@ def test_warnings():
 def test_deliberately_empty_fields_are_notes_not_warnings():
     # The engine still warns (see test_activision.py); the app shows the _sources reason instead
     at = run_app(ACTIVISION)
-    assert not at.warning
-    assert "No warnings." in [c.value for c in at.caption]
+    assert not at.main.tabs[0].warning
+    assert "No warnings." in [c.value for c in at.main.tabs[0].caption]
     notes = [i.value for i in at.main.tabs[0].info]
     assert len(notes) == 2
     assert notes[0].startswith("stated_equity_value is intentionally empty: Deliberately left empty: "
@@ -144,3 +145,20 @@ def test_figure_detail_quotes_the_source_exactly():
     # "$" escaped so markdown shows the filing text verbatim instead of a maths formula
     assert r"> Total gross long-term debt \$ 3,650 | Unamortized discount" in text
     assert "Note 13 Debt" in text
+
+
+def test_dcf_tab_for_activision():
+    at = run_app(ACTIVISION)
+    assert tiles(at, 2) == {"DCF value per share": "$99.03", "DCF enterprise value": "$72,030m",
+                            "Offer vs DCF value": "-4.1%", "Terminal value % of EV": "82.0%"}
+    assert len(at.main.tabs[2].get("vega_lite_chart")) == 1            # the heatmap
+    assert [w.value for w in at.main.tabs[2].warning] == [
+        "Terminal value is 82% of DCF enterprise value: the valuation depends mostly on the perpetuity "
+        "assumptions (WACC and g)."]
+    schedule = table_with(at, "Year", 2022).set_index("Year")
+    assert schedule.loc[2022, "Present value (calculated)"] == "$1,648m"
+
+
+def test_dcf_tab_without_inputs():
+    at = run_app(ILLUSTRATIVE)
+    assert at.main.tabs[2].info[0].value.startswith("No DCF inputs for this deal.")
