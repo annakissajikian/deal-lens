@@ -133,14 +133,14 @@ def test_disclaimer_always_shown(deal):
 
 def test_illustrative_headline_tiles_match_locked_outputs():
     assert tiles(run_app(ILLUSTRATIVE)) == {
-        "Transaction enterprise value": "$6,800m", "Transaction equity value": "$6,000m",
-        "Acquisition premium": "20.0%", "EV / EBITDA": "13.60x"}
+        "Enterprise value": "$6,800m", "Equity value": "$6,000m",
+        "Premium": "20.0%", "EV / EBITDA": "13.60x"}
 
 
 def test_activision_headline_tiles_match_locked_outputs():
     assert tiles(run_app(ACTIVISION)) == {
-        "Transaction enterprise value": "$68,824m", "Transaction equity value": "$75,597m",
-        "Acquisition premium": "45.3%", "EV / EBITDA": "20.39x"}
+        "Enterprise value": "$68,824m", "Equity value": "$75,597m",
+        "Premium": "45.3%", "EV / EBITDA": "20.39x"}
 
 
 def test_deal_terms():

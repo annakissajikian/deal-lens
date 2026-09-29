@@ -141,8 +141,8 @@ def test_form_runs_the_hand_calculated_scenario():
     at.number_input(key="f_offer_price_per_share").set_value(66.0).run()
     click(at, "Run analysis")
     assert {m.label: m.value for m in at.metric} == {
-        "Transaction enterprise value": "$7,400m", "Transaction equity value": "$6,600m",
-        "Acquisition premium": "32.0%", "EV / EBITDA": "14.80x"}
+        "Enterprise value": "$7,400m", "Equity value": "$6,600m",
+        "Premium": "32.0%", "EV / EBITDA": "14.80x"}
     assert len(at.get("download_button")) == 1
 
 
@@ -300,7 +300,7 @@ def test_run_saves_the_deal_and_still_offers_the_word_memo(isolated_deal_folders
     at.sidebar.radio(key="mode").set_value("Example & saved deals").run()
     assert SAVED in at.sidebar.selectbox[0].options
     at.sidebar.selectbox[0].select(SAVED).run()
-    assert {m.label: m.value for m in at.main.tabs[0].metric}["Acquisition premium"] == "32.0%"   # 66 / 50 − 1
+    assert {m.label: m.value for m in at.main.tabs[0].metric}["Premium"] == "32.0%"   # 66 / 50 − 1
 
 
 def test_rerun_updates_the_saved_file(isolated_deal_folders):

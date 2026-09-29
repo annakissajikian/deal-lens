@@ -1,11 +1,30 @@
-# Visual theme for the Streamlit app: neutral palette, one navy accent.
+# App theme: dark, matching the landing page (#08060E, white text, Inter, gold accent).
+# Everything Streamlit draws (tables, inputs, tabs, alerts, charts) follows these values;
+# ui/styles.py adds what the theme cannot express (pill buttons, card borders, muted tabs).
 [theme]
-base = "light"
-primaryColor = "#1F3A5F"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F4F6F9"
-textColor = "#1A1A1A"
-font = "sans serif"
+base = "dark"
+primaryColor = "#C9A84C"                 # gold: active tab indicator, selected radio, focus rings
+backgroundColor = "#08060E"
+secondaryBackgroundColor = "#1A1625"     # input fields, cards
+textColor = "#FFFFFF"
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap"
+borderColor = "rgba(255,255,255,0.12)"
+showWidgetBorder = true
+dataframeBorderColor = "rgba(255,255,255,0.08)"
+dataframeHeaderBackgroundColor = "#131020"
+metricValueFontSize = "1.85rem"          # keeps "$68,824m" whole in a quarter-width tile
+# Alerts: dark tints (gold for warnings, blue for info) instead of bright fills
+yellowBackgroundColor = "rgba(201,168,76,0.12)"
+yellowTextColor = "#E6D3A1"
+blueBackgroundColor = "rgba(57,135,229,0.12)"
+blueTextColor = "#A9C8F2"
+# Reference palette, dark-mode steps (validated for dark surfaces)
+chartCategoricalColors = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"]
+
+[theme.sidebar]
+backgroundColor = "#0D0B14"
+secondaryBackgroundColor = "#1A1625"
+textColor = "#FFFFFF"
 
 [client]
 toolbarMode = "minimal"

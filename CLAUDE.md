@@ -226,6 +226,18 @@ python -m pytest -v                        # run all tests
   so a visitor's saved deal would appear in every visitor's sidebar (and be
   lost on restart) — Anna to decide before deploying. Memo tab offers Word, HTML and Markdown. Tables use a
   fixed full-width layout (Quick Look ignores it; Word respects it). 283 tests.
+- **Dark theme (29 Sep 2026): COMPLETE.** Visual only. `.streamlit/config.toml`
+  base dark: bg `#08060E`, cards/inputs `#1A1625`, sidebar `#0D0B14`, text
+  white, primary gold `#C9A84C` (tab indicator, selected radio, focus), Inter
+  font, dark alert tints, reference-palette dark chart colours. `ui/styles.py`
+  (`apply_styles()` in app.py): white-pill primary buttons, ghost secondary
+  buttons, metric cards, muted inactive tabs, muted captions. Charts use the
+  palette's dark steps (football field slots `#3987e5 #d95926 #199e70
+  #c98500`; heatmap poles `#e66767`/`#3987e5`, midpoint `#383835`, white text).
+  Wordmark: white "Deal", gold "Lens". Overview tiles have short labels (full
+  name + formula in the tooltip). Limitation: `st.dataframe` has no row
+  striping option, so tables are not alternately shaded. Memos (Word/HTML)
+  stay light: they are printable documents.
 
 ## Roadmap (agreed with Anna on 29 Sep 2026)
 Done: 1 transaction engine · 2 fully diluted shares + Activision · 3 Streamlit

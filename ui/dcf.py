@@ -18,9 +18,9 @@ from finance.dcf import DCFAnalysis
 from finance.models import TransactionAnalysis
 from utils.formatting import format_value, md
 
-# Reference diverging palette: blue <-> red poles with a neutral grey midpoint.
-BELOW_OFFER, AT_OFFER, ABOVE_OFFER = "#e34948", "#f0efec", "#2a78d6"
-INK, MUTED = "#0b0b0b", "#52514e"
+# Reference diverging palette, dark-mode steps: blue <-> red poles with a neutral grey midpoint.
+BELOW_OFFER, AT_OFFER, ABOVE_OFFER = "#e66767", "#383835", "#3987e5"
+INK, MUTED = "#FFFFFF", "rgba(255,255,255,0.55)"
 
 
 def render_dcf(analysis: TransactionAnalysis, dcf: Optional[DCFAnalysis]) -> None:
@@ -100,14 +100,14 @@ def heatmap(dcf: DCFAnalysis, offer: float, cur: str, base_wacc: float, base_gro
     df = pd.DataFrame(rows)
     values = [v for v in df["value"] if pd.notna(v)]
     spread = max(abs(max(values) - offer), abs(min(values) - offer)) or 1.0
-    # Dark text on pale cells, white text on strongly coloured cells (readable either way)
-    df["text_colour"] = ["white" if pd.notna(v) and abs(v - offer) / spread > 0.6 else INK for v in df["value"]]
+    # On the dark theme every cell (dark grey midpoint to coloured poles) takes white text
+    df["text_colour"] = INK
 
     x = alt.X("Terminal growth:O", sort=None, axis=alt.Axis(labelAngle=0, title="Terminal growth (g)"))
     y = alt.Y("WACC:O", sort=None, axis=alt.Axis(title="WACC"))
     tooltip = [alt.Tooltip("WACC:O"), alt.Tooltip("Terminal growth:O"),
                alt.Tooltip("label:N", title="Value per share"), alt.Tooltip("offer_vs:N", title="Offer vs DCF")]
-    cells = alt.Chart(df).mark_rect(stroke="white", strokeWidth=2, cornerRadius=4).encode(
+    cells = alt.Chart(df).mark_rect(stroke="#08060E", strokeWidth=2, cornerRadius=4).encode(
         x=x, y=y, tooltip=tooltip,
         color=alt.Color("value:Q", title="Value per share",
                         scale=alt.Scale(domain=[offer - spread, offer, offer + spread],

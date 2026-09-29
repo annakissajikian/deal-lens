@@ -18,8 +18,8 @@ from finance.comps import ValuationAnalysis
 from utils.formatting import format_value, md
 
 CATEGORIES = ["DCF", "Trading comps", "Precedent transactions", "Market reference"]
-CATEGORY_COLOURS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]      # reference palette slots 1-4
-INK, MUTED = "#0b0b0b", "#52514e"
+CATEGORY_COLOURS = ["#3987e5", "#d95926", "#199e70", "#c98500"]      # reference palette slots 1-4, dark steps
+INK, MUTED = "#FFFFFF", "rgba(255,255,255,0.55)"
 
 
 def render_valuation(v: Optional[ValuationAnalysis], cur: str) -> None:
@@ -68,7 +68,7 @@ def football_field(v: ValuationAnalysis, cur: str) -> alt.LayerChart:
     hi = max(df["high"].max(), v.unaffected_price, v.offer_price)
     pad = (hi - lo) * 0.12
     x = alt.X("low:Q", title="Value per share", scale=alt.Scale(domain=[lo - pad, hi + pad], zero=False),
-              axis=alt.Axis(format="$,.0f", grid=True, gridColor="#e1e0d9"))
+              axis=alt.Axis(format="$,.0f", grid=True, gridColor="#2c2c2a"))
     y = alt.Y("Range:N", sort=None, title=None, axis=alt.Axis(labelLimit=260))
     tooltip = [alt.Tooltip("Range:N"), alt.Tooltip("Method:N"),
                alt.Tooltip("low_label:N", title="Low"), alt.Tooltip("high_label:N", title="High")]

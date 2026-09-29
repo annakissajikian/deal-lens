@@ -9,7 +9,9 @@ from finance.dilution import diluted_share_count
 from finance.models import TransactionAnalysis
 from utils.formatting import format_value, md
 
-HEADLINE_METRICS = ("enterprise_value", "equity_value", "premium", "ev_ebitda")
+# Short tile labels (the full metric name and formula are in each tile's tooltip)
+HEADLINE_METRICS = {"enterprise_value": "Enterprise value", "equity_value": "Equity value",
+                    "premium": "Premium", "ev_ebitda": "EV / EBITDA"}
 
 
 def render_overview(analysis: TransactionAnalysis, sources: dict) -> None:
@@ -17,9 +19,9 @@ def render_overview(analysis: TransactionAnalysis, sources: dict) -> None:
     info, f, a, cur = deal.info, deal.facts, deal.assumptions, deal.info.currency
 
     # Headline tiles (the formula shows as a tooltip)
-    for col, key in zip(st.columns(len(HEADLINE_METRICS)), HEADLINE_METRICS):
+    for col, (key, label) in zip(st.columns(len(HEADLINE_METRICS)), HEADLINE_METRICS.items()):
         m = analysis.metrics[key]
-        col.metric(m.label, format_value(m.value, m.unit, cur), help=m.formula, border=True)
+        col.metric(label, format_value(m.value, m.unit, cur), help=f"{m.label} = {m.formula}", border=True)
 
     st.subheader("Deal terms")
     unaffected_date = sources["sources"].get("unaffected_share_price", {}).get("as_of")

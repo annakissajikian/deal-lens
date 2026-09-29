@@ -67,6 +67,9 @@ guessed); **facts, assumptions, calculated figures and AI interpretation stay
 labelled** everywhere; every formula has **hand-calculated tests** (277 tests,
 including headless tests of the web app).
 
+**Design:** dark theme throughout (`.streamlit/config.toml` + `ui/styles.py`),
+Inter font, gold accent, chart colours from a colour-blind-checked palette.
+
 **Tech stack:** Python 3 · Streamlit · Altair · pandas · Anthropic Claude API
 (`claude-opus-5-5`, structured outputs) · python-docx · Pillow · pytest.
 

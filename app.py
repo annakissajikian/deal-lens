@@ -23,6 +23,7 @@ from ui.dcf import render_dcf
 from ui.deal_form import render_deal_form
 from ui.financials import render_financials
 from ui.home import ASSETS, example_stats, render_home
+from ui.styles import apply_styles
 from ui.memo_panel import render_memo
 from ui.overview import render_overview
 from ui.valuation import render_valuation
@@ -35,6 +36,7 @@ EXAMPLE_FILE = "microsoft_activision.json"
 
 st.set_page_config(page_title="DealLens", page_icon=":material/query_stats:", layout="wide")
 st.logo(str(ASSETS / "logo_wordmark.svg"), icon_image=str(ASSETS / "logo_mark.svg"), size="large")
+apply_styles()
 
 deals = {f"Example: {label}": path for label, path in list_sample_deals().items()} | \
         {f"Saved: {label}": path for label, path in list_sample_deals(USER_DEALS_DIR).items()}
