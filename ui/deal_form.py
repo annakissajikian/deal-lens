@@ -16,12 +16,14 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
+from finance.comps import analyse_valuation
 from finance.dcf import analyse_dcf
 from finance.models import DealInputError
 from finance.transaction import analyse_transaction
 from ui.dcf import render_dcf
 from ui.financials import render_financials
 from ui.overview import render_overview
+from ui.valuation import render_valuation
 from utils.formatting import SYMBOLS, md
 from utils.io import deal_filename, deal_from_dict, save_deal
 
@@ -38,9 +40,17 @@ GROUPS = {
                           "stated_equity_value", "financials_period"),
     "Assumptions": ("cost_synergies", "revenue_synergies", "Financing mix") + PERCENT_FIELDS,
     "DCF": ("dcf",),
+    "Valuation": ("valuation",),
 }
 # Editable tables: form key -> columns. Their rows live in st.session_state, not in widgets.
-TABLES = {"option_tranches": ("number", "strike"), "dcf_rows": ("year", "fcf")}
+TABLES = {
+    "option_tranches": {"number": float, "strike": float},
+    "dcf_rows": {"year": float, "fcf": float},
+    "val_methods": {"name": str, "method": str, "metric_label": str, "metric_value": float,
+                    "multiple_low": float, "multiple_high": float},
+    "val_peers": {"valuation": str, "peer": str, "multiple": float},
+    "val_refs": {"name": str, "low": float, "high": float},
+}
 
 BLANK = {
     "acquirer": "", "target": "", "sector": "", "announcement_date": None, "currency": "USD",
@@ -53,6 +63,7 @@ BLANK = {
     "financing_cash": 100.0, "financing_debt": 0.0, "financing_stock": 0.0, "tax_rate": None,
     "dcf_include": False, "dcf_rows": [], "dcf_wacc": None, "dcf_terminal_growth": None,
     "dcf_valuation_date": "", "dcf_wacc_range": "", "dcf_growth_range": "",
+    "val_methods": [], "val_peers": [], "val_refs": [],
 }
 SHARE_MODES = ("Enter fully diluted shares", "Build with treasury stock method")
 
@@ -97,7 +108,30 @@ def build_deal_dict(v: dict) -> dict:
                        "valuation_date": v["dcf_valuation_date"].strip(),
                        "wacc_range": percent_list(v["dcf_wacc_range"]),
                        "growth_range": percent_list(v["dcf_growth_range"])}
+    methods = [r for r in v["val_methods"] if any(x is not None for x in r.values())]
+    refs = [r for r in v["val_refs"] if any(x is not None for x in r.values())]
+    if methods or refs:
+        multiples = []
+        for r in methods:
+            entry = {k: r.get(k) for k in ("name", "method", "metric_label", "metric_value")}
+            peers = [{"name": p.get("peer"), "multiple": p.get("multiple")} for p in v["val_peers"]
+                     if p.get("valuation") == r.get("name") and (p.get("peer") or p.get("multiple") is not None)]
+            if peers:
+                entry["peers"] = peers
+            for k in ("multiple_low", "multiple_high"):
+                if r.get(k) is not None:
+                    entry[k] = r[k]
+            multiples.append(entry)
+        deal["valuation"] = {"multiples": multiples,
+                             "references": [{k: r.get(k) for k in ("name", "low", "high")} for r in refs]}
     return deal
+
+
+def orphan_peers(v: dict) -> list[str]:
+    """Peer rows whose 'valuation' does not match any method name (they would be ignored)."""
+    names = {r.get("name") for r in v["val_methods"]}
+    return [p.get("peer") or "(unnamed)" for p in v["val_peers"]
+            if (p.get("peer") or p.get("multiple") is not None) and p.get("valuation") not in names]
 
 
 def percent_list(text: str) -> list:
@@ -127,6 +161,12 @@ def form_values_from_dict(raw: dict) -> dict:
     for k in ("cost_synergies", "revenue_synergies") + PERCENT_FIELDS:
         if k in a:
             v[k] = round(a[k] * 100, 10) if k in PERCENT_FIELDS and a[k] is not None else a[k]
+    val = raw.get("valuation")
+    if val:
+        v["val_methods"] = [{k: m.get(k) for k in TABLES["val_methods"]} for m in val.get("multiples", [])]
+        v["val_peers"] = [{"valuation": m.get("name"), "peer": p.get("name"), "multiple": p.get("multiple")}
+                          for m in val.get("multiples", []) for p in m.get("peers", [])]
+        v["val_refs"] = [{k: r.get(k) for k in TABLES["val_refs"]} for r in val.get("references", [])]
     dcf = raw.get("dcf")
     if dcf:
         as_pct = lambda x: None if x is None else round(x * 100, 10)
@@ -161,8 +201,17 @@ def _values() -> dict:
     for name, columns in TABLES.items():
         table = st.session_state.get(f"f_table_{name}")
         v[name] = saved[name] if table is None else [
-            {c: (None if pd.isna(row[c]) else float(row[c])) for c in columns} for _, row in table.iterrows()]
+            {c: _cell(row[c], kind) for c, kind in columns.items()} for _, row in table.iterrows()]
     return v
+
+
+def _cell(x, kind):
+    """Table cell -> None (blank), float or stripped text."""
+    if x is None or (not isinstance(x, str) and pd.isna(x)):
+        return None
+    if kind is float:
+        return float(x)
+    return str(x).strip() or None
 
 
 def _load(values: dict) -> None:
@@ -181,7 +230,9 @@ def _table_editor(name: str, column_config: dict) -> None:
     key = f"f_{name}_{st.session_state.f_version}"
     if key not in st.session_state:          # table (re)drawn: start from the saved rows
         st.session_state[f"f_base_{name}"] = st.session_state.f_saved[name]
-    base = pd.DataFrame(st.session_state[f"f_base_{name}"] or [], columns=list(TABLES[name]), dtype=float)
+    columns = TABLES[name]
+    base = pd.DataFrame(st.session_state[f"f_base_{name}"] or [], columns=list(columns))
+    base = base.astype({c: ("float64" if kind is float else "object") for c, kind in columns.items()})
     st.session_state[f"f_table_{name}"] = st.data_editor(
         base, key=key, num_rows="dynamic", hide_index=True, column_config=column_config)
 
@@ -199,7 +250,8 @@ def _run() -> None:
     st.session_state.f_save_msg = None
     try:
         deal = deal_from_dict(raw)
-        st.session_state.f_result = (raw, analyse_transaction(deal), analyse_dcf(deal))
+        dcf = analyse_dcf(deal)
+        st.session_state.f_result = (raw, analyse_transaction(deal), dcf, analyse_valuation(deal, dcf))
         st.session_state.f_errors = []
     except DealInputError as exc:
         st.session_state.f_result, st.session_state.f_errors = None, exc.errors
@@ -232,8 +284,8 @@ def render_deal_form(deals: dict) -> None:
     st.caption("Enter the deal, press Run analysis, then review the results tabs. "
                "Percentages are typed as 25 for 25%. Leave optional fields blank if not available.")
     # Own key + default: otherwise Streamlit reuses the saved-deal view's active "Deal Overview" tab
-    inputs_tab, overview_tab, financials_tab, dcf_tab = st.tabs(
-        ["Inputs", "Deal Overview", "Financials", "DCF"], key="f_tabs", default="Inputs")
+    inputs_tab, overview_tab, financials_tab, dcf_tab, valuation_tab = st.tabs(
+        ["Inputs", "Deal Overview", "Financials", "DCF", "Valuation"], key="f_tabs", default="Inputs")
 
     with inputs_tab:
         st.selectbox("Start from", ["Blank"] + list(deals), key="f_start",
@@ -323,6 +375,31 @@ def render_deal_form(deals: dict) -> None:
                 "fcf": st.column_config.NumberColumn("Unlevered FCF (m)", format="%.2f")})
         _group_errors("DCF")
 
+        st.subheader("Comps, precedents and reference ranges · assumptions (optional)")
+        st.caption("One row per valuation method. Leave the multiple range blank to use the interquartile "
+                   "range (25th–75th percentile) of that method's peers below.")
+        _table_editor("val_methods", {
+            "name": st.column_config.TextColumn("Method name", help="e.g. Trading comps (LTM EBITDA)"),
+            "method": st.column_config.SelectboxColumn("Type", options=["comps", "precedents"]),
+            "metric_label": st.column_config.TextColumn("Target metric", help="e.g. LTM EBITDA"),
+            "metric_value": st.column_config.NumberColumn("Metric value (m)", format="%.2f"),
+            "multiple_low": st.column_config.NumberColumn("Multiple low (x)", format="%.2f"),
+            "multiple_high": st.column_config.NumberColumn("Multiple high (x)", format="%.2f")})
+        st.caption("Peers: the method name must match a row above exactly.")
+        _table_editor("val_peers", {
+            "valuation": st.column_config.TextColumn("Method name"),
+            "peer": st.column_config.TextColumn("Peer company or transaction"),
+            "multiple": st.column_config.NumberColumn("Multiple (x)", format="%.2f")})
+        orphans = orphan_peers(_values())
+        if orphans:
+            st.warning("These peers do not match any method name and will be ignored: " + ", ".join(orphans))
+        st.caption("Per-share reference ranges, e.g. 52-week trading range or analyst price targets.")
+        _table_editor("val_refs", {
+            "name": st.column_config.TextColumn("Range name"),
+            "low": st.column_config.NumberColumn("Low (per share)", format="%.2f"),
+            "high": st.column_config.NumberColumn("High (per share)", format="%.2f")})
+        _group_errors("Valuation")
+
         st.button("Run analysis", type="primary", on_click=_run)
 
     st.session_state.f_saved = _values()
@@ -339,7 +416,8 @@ def render_deal_form(deals: dict) -> None:
 
     for tab, render in ((overview_tab, lambda r: render_overview(r[1], NO_SOURCES)),
                         (financials_tab, lambda r: render_financials(r[1], NO_SOURCES)),
-                        (dcf_tab, lambda r: render_dcf(r[1], r[2]))):
+                        (dcf_tab, lambda r: render_dcf(r[1], r[2])),
+                        (valuation_tab, lambda r: render_valuation(r[3], r[0]["deal"]["currency"]))):
         with tab:
             if result is None or stale:
                 st.info("Run the analysis from the Inputs tab to see results here.")

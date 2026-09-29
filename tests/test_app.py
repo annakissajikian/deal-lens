@@ -162,3 +162,23 @@ def test_dcf_tab_for_activision():
 def test_dcf_tab_without_inputs():
     at = run_app(ILLUSTRATIVE)
     assert at.main.tabs[2].info[0].value.startswith("No DCF inputs for this deal.")
+
+
+def test_valuation_tab_for_activision():
+    at = run_app(ACTIVISION)
+    tab = at.main.tabs[3]
+    assert len(tab.get("vega_lite_chart")) == 1                                  # football field
+    comps = table_with(at, "Method", "Trading comps (CY2022E EBITDA)").set_index("Method")
+    assert comps.loc["Trading comps (CY2022E EBITDA)", "Implied value per share (calculated)"] == "$68.77 – $88.86"
+    assert comps.loc["Precedent transactions (LTM EBITDA)", "Offer multiple"] == "19.04x"
+    field = table_with(at, "Range", "Analyst price targets").set_index("Range")
+    assert (field.loc["Analyst price targets", "Low"], field.loc["Analyst price targets", "High"]) == ("$54.00", "$125.00")
+
+
+def test_valuation_caption_shows_dollar_prices_verbatim():
+    captions = [c.value for c in run_app(ACTIVISION).main.tabs[3].caption]
+    assert any(r"offer \$95.00; dashed line = unaffected price \$65.39" in c for c in captions)
+
+
+def test_valuation_tab_without_inputs():
+    assert run_app(ILLUSTRATIVE).main.tabs[3].info[0].value.startswith("No comps, precedents or DCF")

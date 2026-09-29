@@ -13,6 +13,11 @@ as_of and a list of option_tranches, each {number, strike}).
 An optional "dcf" section holds the DCF inputs (forecast_years, unlevered_fcf,
 wacc, terminal_growth, valuation_date, wacc_range, growth_range).
 
+An optional "valuation" section holds "multiples" (trading comps / precedent
+transactions, each with name, method, metric_label, metric_value, optional
+peers [{name, multiple}], multiple_low, multiple_high) and "references"
+(per-share ranges [{name, low, high}]).
+
 Every structural problem (wrong types, missing sections, bad dates) is raised
 as a DealInputError, never as a raw Python error.
 
@@ -33,7 +38,8 @@ from datetime import date
 from pathlib import Path
 
 from finance.models import (DCFInputs, DealAssumptions, DealFacts, DealInfo, DealInputError, DealInputs,
-                            OptionTranche, ShareBuild)
+                            MultipleValuation, OptionTranche, Peer, ReferenceRange, ShareBuild,
+                            ValuationInputs)
 
 SECTIONS = {"deal": DealInfo, "facts": DealFacts, "assumptions": DealAssumptions}
 SAMPLE_DEALS_DIR = Path(__file__).parent.parent / "data" / "sample_deals"
@@ -114,7 +120,35 @@ def deal_from_dict(raw) -> DealInputs:
         facts=_build("facts", DealFacts, facts),
         assumptions=_build("assumptions", DealAssumptions, raw["assumptions"]),
         dcf=_parse_dcf(raw["dcf"]) if raw.get("dcf") is not None else None,
+        valuation=_parse_valuation(raw["valuation"]) if raw.get("valuation") is not None else None,
     )
+
+
+def _objects(section: str, raw) -> list[dict]:
+    """A list of JSON objects, or a DealInputError naming what is wrong."""
+    if not isinstance(raw, list):
+        raise DealInputError([f"{section} must be a list [...], got {type(raw).__name__}."])
+    bad = [f"{section}[{i}] must be an object {{...}}." for i, x in enumerate(raw) if not isinstance(x, dict)]
+    if bad:
+        raise DealInputError(bad)
+    return raw
+
+
+def _parse_valuation(raw) -> ValuationInputs:
+    if not isinstance(raw, dict):
+        raise DealInputError([f"Section 'valuation' must be an object {{...}}, got {type(raw).__name__}."])
+    unknown = [k for k in raw if k not in ("multiples", "references") and not k.startswith("_")]
+    if unknown:
+        raise DealInputError([f"Unknown field in 'valuation': '{k}'" for k in unknown])
+    multiples = []
+    for i, m in enumerate(_objects("valuation.multiples", raw.get("multiples", []))):
+        data = dict(m)
+        data["peers"] = tuple(_build(f"valuation.multiples[{i}].peers[{j}]", Peer, p) for j, p in
+                              enumerate(_objects(f"valuation.multiples[{i}].peers", data.get("peers", []))))
+        multiples.append(_build(f"valuation.multiples[{i}]", MultipleValuation, data))
+    references = tuple(_build(f"valuation.references[{i}]", ReferenceRange, r)
+                       for i, r in enumerate(_objects("valuation.references", raw.get("references", []))))
+    return ValuationInputs(multiples=tuple(multiples), references=references)
 
 
 def _parse_dcf(raw) -> DCFInputs:

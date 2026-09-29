@@ -17,6 +17,8 @@ deal file in `data/sample_deals/`.
 and download or save it as JSON.
 **Step 4 — DCF.** Discounted cash flow valuation with a WACC × terminal-growth
 sensitivity heatmap (DCF tab).
+**Step 5 — Comps, precedents, football field.** Multiple-based valuation
+ranges and a football field chart against the offer price (Valuation tab).
 
 ## Quick start
 
@@ -41,6 +43,7 @@ deal-lens/
 │   ├── dcf.py                   # DCF tab: schedule, valuation, sensitivity heatmap
 │   ├── deal_form.py             # New deal form: grouped inputs, inline errors, export
 │   ├── overview.py              # Deal Overview tab: headline tiles, deal terms, warnings
+│   ├── valuation.py             # Valuation tab: football field, comps and precedents
 │   └── financials.py            # Financials tab: tagged tables and sources
 ├── .streamlit/config.toml       # app theme
 ├── finance/                     # deterministic engine, no AI
@@ -48,6 +51,7 @@ deal-lens/
 │   ├── validation.py            # errors (stop) and warnings (review)
 │   ├── dilution.py              # fully diluted shares (treasury stock method)
 │   ├── dcf.py                   # DCF valuation + WACC × growth sensitivity
+│   ├── comps.py                 # comps / precedents ranges + football field bars
 │   └── transaction.py           # the formulas
 ├── utils/
 │   ├── io.py                    # JSON file -> DealInputs
@@ -62,6 +66,7 @@ deal-lens/
     ├── test_transaction.py      # hand-calculated finance results
     ├── test_dilution.py         # hand-calculated treasury stock method
     ├── test_dcf.py              # hand-calculated DCF and sensitivity grid
+    ├── test_comps.py            # hand-calculated comps, precedents, football field
     ├── test_activision.py       # real-deal regression test
     ├── test_app.py              # web app, run headless with Streamlit AppTest
     ├── test_deal_form.py        # New deal form: conversions, saving, headless form runs
@@ -111,6 +116,8 @@ The app only displays results: all numbers come from `finance/`.
 | PV of forecast FCF (DCF) | Σ FCF_t ÷ (1 + WACC)^t, end of each year |
 | Terminal value (DCF) | FCF_N × (1 + g) ÷ (WACC − g) (Gordon growth) |
 | DCF value per share | (Σ PV + PV of terminal value − net debt) ÷ fully diluted shares |
+| Comps / precedents per share | (multiple × target metric − net debt) ÷ fully diluted shares |
+| Default multiple range | 25th–75th percentile of the peers (when no range is selected) |
 | Transaction equity value | Offer price × Fully diluted shares |
 | Transaction enterprise value | Equity value + Debt − Cash |
 | Acquisition premium | Offer price ÷ Unaffected (pre-announcement) price − 1 |
@@ -172,6 +179,17 @@ offer is 4.1% below the DCF value. Over Allen & Company's full ranges the
 heatmap gives **$83.52–$122.79** against their published **$84.73–$123.87**.
 Terminal value is 82% of DCF EV, which the app flags.
 
+## Comps, precedents and football field (Activision example)
+
+Allen & Company's selected multiple ranges (DEFM14A p.55–56) applied to
+management's Adjusted EBITDA: trading comps 13.5–18.0x CY2022E → $68.77–$88.86
+and 12.5–15.0x CY2023E → $77.67–$91.51; precedents 14.0–20.0x LTM →
+$72.11–$99.37. Each is within 1% of Allen & Company's published ranges.
+The football field adds the DCF range, the 52-week trading range
+($56.40–$104.53) and analyst price targets ($54–$125) against the $95 offer.
+Individual peer multiples are not disclosed in the proxy, so the example uses
+the selected ranges; for new deals, peers can be typed into the form.
+
 ## Limitations
 
 - Enterprise value excludes preferred stock, minority interests, leases and
@@ -188,6 +206,8 @@ Terminal value is 82% of DCF EV, which the app flags.
   terminal value only; per-share value uses the fully diluted share count at
   the offer price; the forecast cash flows are taken as given (no revenue or
   margin build).
+- Comps/precedents: one multiple per method (e.g. EV / EBITDA); no
+  calendarisation or size adjustment; peers are entered manually.
 - A stated headline equity value is only a cross-check; the calculated figure
   is always used.
 - If no incremental margin is given, revenue synergies use the target's

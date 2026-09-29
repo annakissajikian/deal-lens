@@ -17,7 +17,7 @@ from streamlit.testing.v1 import AppTest
 
 from finance.transaction import analyse_transaction
 from ui.deal_form import (BLANK, SHARE_MODES, build_deal_dict, errors_by_group, form_values_from_dict,
-                          percent_list)
+                          orphan_peers, percent_list)
 from utils.io import deal_filename, deal_from_dict, load_deal, save_deal
 
 ROOT = Path(__file__).parent.parent
@@ -33,7 +33,7 @@ def raw(path: Path) -> dict:
 
 
 def sections(d: dict) -> dict:
-    return {k: d[k] for k in ("deal", "facts", "assumptions", "dcf") if k in d}
+    return {k: d[k] for k in ("deal", "facts", "assumptions", "dcf", "valuation") if k in d}
 
 
 # ------------------------------------------------ one validation path --
@@ -248,3 +248,34 @@ def test_form_dcf_matches_hand_calculation():
     at.run()
     click(at, "Run analysis")
     assert {m.label: m.value for m in at.main.tabs[3].metric}["DCF value per share"] == "$49.27"
+
+
+# ---------------------------------------------------------------- valuation --
+
+def test_valuation_tables_build_the_valuation_section():
+    values = BLANK | {
+        "val_methods": [{"name": "Comps", "method": "comps", "metric_label": "LTM EBITDA", "metric_value": 500.0,
+                         "multiple_low": None, "multiple_high": None},
+                        {"name": None, "method": None, "metric_label": None, "metric_value": None,
+                         "multiple_low": None, "multiple_high": None}],
+        "val_peers": [{"valuation": "Comps", "peer": "A", "multiple": 10.0},
+                      {"valuation": "Comps", "peer": "B", "multiple": 12.0}],
+        "val_refs": [{"name": "52-week range", "low": 45.0, "high": 62.0}]}
+    assert build_deal_dict(values)["valuation"] == {
+        "multiples": [{"name": "Comps", "method": "comps", "metric_label": "LTM EBITDA", "metric_value": 500.0,
+                       "peers": [{"name": "A", "multiple": 10.0}, {"name": "B", "multiple": 12.0}]}],
+        "references": [{"name": "52-week range", "low": 45.0, "high": 62.0}]}
+    assert "valuation" not in build_deal_dict(BLANK)
+
+
+def test_orphan_peers_are_reported():
+    values = BLANK | {"val_methods": [{"name": "Comps"}],
+                      "val_peers": [{"valuation": "Comps", "peer": "A", "multiple": 10.0},
+                                    {"valuation": "Typo", "peer": "B", "multiple": 12.0}]}
+    assert orphan_peers(values) == ["B"]
+
+
+def test_form_valuation_tab_for_activision():
+    at = new_deal_app("Microsoft Corporation / Activision Blizzard, Inc.")
+    click(at, "Run analysis")
+    assert len(at.main.tabs[4].get("vega_lite_chart")) == 1                     # football field

@@ -47,6 +47,13 @@ Per share      = 78,803.46 / 795.758809                                 = $99.03
 TV share 82.0%; offer $95.00 is 4.07% below the DCF value.
 Heatmap corners: WACC 8.00% / g 2.25% = $83.52; WACC 6.50% / g 2.75% = $122.79
 (Allen & Company, same ranges: $84.73 – $123.87).
+
+Comps and precedents (Allen & Company's selected ranges × management Adj. EBITDA)
+Per share = (multiple × EBITDA + 6,773 net cash) / 795.758809
+CY2022E comps   13.5x–18.0x × 3,552 = 47,952–63,936 -> $68.77–$88.86   (Allen $69.08–$89.05)
+CY2023E comps   12.5x–15.0x × 4,403 = 55,037.5–66,045 -> $77.67–$91.51 (Allen $77.93–$91.67)
+LTM precedents  14.0x–20.0x × 3,615 = 50,610–72,300 -> $72.11–$99.37   (Allen $72.40–$99.49)
+Offer multiples = 68,824.09 / 3,552 = 19.38x; / 4,403 = 15.63x; / 3,615 = 19.04x
 """
 
 import json
@@ -54,6 +61,7 @@ from pathlib import Path
 
 import pytest
 
+from finance.comps import analyse_valuation
 from finance.dcf import analyse_dcf
 from finance.transaction import analyse_transaction
 from utils.io import load_deal
@@ -193,3 +201,25 @@ def test_dcf_range_close_to_allen_and_company(dcf):
 def test_dcf_warns_that_terminal_value_dominates(dcf):
     assert dcf.warnings == ["Terminal value is 82% of DCF enterprise value: the valuation depends mostly on "
                             "the perpetuity assumptions (WACC and g)."]
+
+
+# ----------------------------------------------------- comps and precedents --
+
+ALLEN_RANGES = [(69.08, 89.05), (77.93, 91.67), (72.40, 99.49)]      # proxy p.56
+
+
+def test_comps_and_precedents(dcf):
+    v = analyse_valuation(load_deal(DEAL_FILE), dcf)
+    got = [(round(m.per_share_low, 2), round(m.per_share_high, 2), round(m.offer_multiple, 2)) for m in v.multiples]
+    assert got == [(68.77, 88.86, 19.38), (77.67, 91.51, 15.63), (72.11, 99.37, 19.04)]
+    for m, (lo, hi) in zip(v.multiples, ALLEN_RANGES):                 # within 1% of Allen & Company
+        assert abs(m.per_share_low / lo - 1) < 0.01 and abs(m.per_share_high / hi - 1) < 0.01
+
+
+def test_football_field(dcf):
+    v = analyse_valuation(load_deal(DEAL_FILE), dcf)
+    assert [(b.category, round(b.low, 2), round(b.high, 2)) for b in v.bars] == [
+        ("DCF", 83.52, 122.79), ("Trading comps", 68.77, 88.86), ("Trading comps", 77.67, 91.51),
+        ("Precedent transactions", 72.11, 99.37), ("Market reference", 56.40, 104.53),
+        ("Market reference", 54.00, 125.00)]
+    assert (v.offer_price, v.unaffected_price) == (95.0, 65.39)

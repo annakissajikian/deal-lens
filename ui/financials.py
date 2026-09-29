@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from finance.models import DealInputs, TransactionAnalysis
+from finance.models import DealInputs, MultipleValuation, ReferenceRange, TransactionAnalysis
 from utils.formatting import format_value, md
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -119,9 +119,12 @@ def _render_sources(deal: DealInputs, analysis: TransactionAnalysis, sources: di
 
 
 def _lookup(deal: DealInputs, field: str):
-    """Input value for a _sources key such as 'cash' or 'share_build.option_tranches[0].strike'."""
+    """Input value for a _sources key such as 'cash', 'share_build.option_tranches[0].strike' or 'dcf.wacc'."""
     first = field.split(".")[0]
-    obj = deal.facts if hasattr(deal.facts, first) else deal.assumptions
+    if first in ("dcf", "valuation"):
+        obj, field = getattr(deal, first), field[len(first) + 1:]
+    else:
+        obj = deal.facts if hasattr(deal.facts, first) else deal.assumptions
     for part in re.findall(r"\w+|\[\d+\]", field):
         if obj is None:
             return None
@@ -130,7 +133,15 @@ def _lookup(deal: DealInputs, field: str):
 
 
 def _display(value) -> str:
-    return "—" if value is None else f"{value:,}" if isinstance(value, (int, float)) else str(value)
+    if value is None:
+        return "—"
+    if isinstance(value, MultipleValuation) and value.multiple_low is not None:
+        return f"{value.multiple_low}x–{value.multiple_high}x × {value.metric_value:,}"
+    if isinstance(value, ReferenceRange):
+        return f"{value.low:,.2f}–{value.high:,.2f} per share"
+    if isinstance(value, tuple):
+        return ", ".join(_display(v) for v in value)
+    return f"{value:,}" if isinstance(value, (int, float)) else str(value)
 
 
 def _table(rows: list[tuple], columns: list[str]) -> None:

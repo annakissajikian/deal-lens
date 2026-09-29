@@ -158,7 +158,16 @@ python -m pytest -v                        # run all tests
   they render at zero height. Activision (agreed with Anna): proxy management
   UFCF 2022E–2026E, WACC 7.25% / g 2.50% (Allen & Co midpoints) → $99.03 per
   share, EV 72,030; grid $83.52–$122.79 vs Allen $84.73–$123.87. Locked.
-- **Step 5 — Comps + precedents + football field: NEXT.**
+- **Step 5 — Comps + precedents + football field: COMPLETE.** 244 tests.
+  `finance/comps.py`: optional `valuation` JSON section (`multiples` with
+  peers and/or a selected range, default = peers' interquartile range;
+  `references` per-share ranges). Valuation tab: football field (categorical
+  palette slots 1–4 in fixed order: DCF, Trading comps, Precedent transactions,
+  Market reference; offer = solid line, unaffected = dashed) + comps table.
+  Form: tables for methods, peers and reference ranges. Activision uses Allen
+  & Co's selected ranges × management Adj. EBITDA (within 1% of Allen's
+  per-share ranges) + 52-week range and analyst targets. Locked.
+- **Step 6 — AI analyst: NEXT.**
 
 ## Roadmap (agreed with Anna on 29 Sep 2026)
 Done: 1 transaction engine · 2 fully diluted shares + Activision · 3 Streamlit

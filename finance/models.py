@@ -107,11 +107,49 @@ class DCFInputs:
 
 
 @dataclass(frozen=True)
+class Peer:
+    """A comparable company or precedent transaction and its multiple (e.g. EV / EBITDA)."""
+    name: str
+    multiple: float
+
+
+@dataclass(frozen=True)
+class MultipleValuation:
+    """
+    Trading comps or precedent transactions applied to one target metric (Step 5).
+    The selected multiple range is a judgement (an ASSUMPTION); when it is not
+    given, the peers' interquartile range (25th-75th percentile) is used.
+    """
+    name: str                                 # e.g. "Trading comps (CY2022E EBITDA)"
+    method: str                               # "comps" or "precedents"
+    metric_label: str                         # e.g. "CY2022E Adj. EBITDA"
+    metric_value: float                       # the target's metric, millions
+    peers: tuple[Peer, ...] = ()
+    multiple_low: Optional[float] = None      # selected range; None = peers' 25th percentile
+    multiple_high: Optional[float] = None     # None = peers' 75th percentile
+
+
+@dataclass(frozen=True)
+class ReferenceRange:
+    """A per-share range quoted directly, e.g. the 52-week trading range or analyst targets."""
+    name: str
+    low: float
+    high: float
+
+
+@dataclass(frozen=True)
+class ValuationInputs:
+    multiples: tuple[MultipleValuation, ...] = ()
+    references: tuple[ReferenceRange, ...] = ()
+
+
+@dataclass(frozen=True)
 class DealInputs:
     info: DealInfo
     facts: DealFacts
     assumptions: DealAssumptions
     dcf: Optional[DCFInputs] = None
+    valuation: Optional[ValuationInputs] = None
 
     def provenance(self) -> dict[str, str]:
         """Map every input field to 'fact' or 'assumption'."""

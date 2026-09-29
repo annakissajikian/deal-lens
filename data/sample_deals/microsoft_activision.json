@@ -51,6 +51,20 @@
     "wacc_range": [0.065, 0.07, 0.075, 0.08],
     "growth_range": [0.0225, 0.025, 0.0275]
   },
+  "valuation": {
+    "multiples": [
+      {"name": "Trading comps (CY2022E EBITDA)", "method": "comps", "metric_label": "CY2022E Adj. EBITDA (management forecast)",
+       "metric_value": 3552.0, "multiple_low": 13.5, "multiple_high": 18.0},
+      {"name": "Trading comps (CY2023E EBITDA)", "method": "comps", "metric_label": "CY2023E Adj. EBITDA (management forecast)",
+       "metric_value": 4403.0, "multiple_low": 12.5, "multiple_high": 15.0},
+      {"name": "Precedent transactions (LTM EBITDA)", "method": "precedents", "metric_label": "LTM Adj. EBITDA at 31 Dec 2021 (2021E, management forecast)",
+       "metric_value": 3615.0, "multiple_low": 14.0, "multiple_high": 20.0}
+    ],
+    "references": [
+      {"name": "52-week trading range (intraday)", "low": 56.40, "high": 104.53},
+      {"name": "Analyst price targets", "low": 54.00, "high": 125.00}
+    ]
+  },
   "_sources": {
     "offer_price_per_share": {
       "document": "DEFM14A", "section": "Letter to stockholders", "page": "PDF p.2 / unnumbered", "as_of": "2022-01-18",
@@ -141,6 +155,29 @@
       "document": "DEFM14A", "section": "Opinion of Activision Blizzard's Financial Advisor — Discounted Cash Flow Analysis", "page": "PDF p.68 / p.57", "as_of": "2022-01-18",
       "snippet": "a selected range of perpetuity growth rates of 2.25% to 2.75% and a selected range of discount rates of 6.50% to 8.00%",
       "note": "ASSUMPTION agreed with Anna: midpoint of Allen & Company's range, 7.25%. The heatmap uses the full 6.50%–8.00% range."
+    },
+    "valuation.multiples[0]": {
+      "document": "DEFM14A", "section": "Opinion of Activision Blizzard's Financial Advisor — Selected Public Companies Analysis", "page": "PDF p.66–67 / p.55–56", "as_of": "2022-01-14",
+      "snippet": "Take-Two Interactive Software, Inc. | Electronic Arts Inc. | Ubisoft Entertainment SA ... applied selected ranges of calendar year 2022 and calendar year 2023 estimated EBITDA multiples derived from the selected companies of 13.5x to 18.0x and 12.5x to 15.0x, respectively",
+      "note": "ASSUMPTION (Allen & Company's selected range). Individual peer multiples are not disclosed; the observed range was 8.4x–19.1x (CY2022E). Metric: CY2022E Adj. EBITDA 3,552 from the management forecasts (PDF p.62 / p.51), consistent with Allen's pre-SBC EBITDA definition."
+    },
+    "valuation.multiples[1]": {
+      "document": "DEFM14A", "section": "Opinion of Activision Blizzard's Financial Advisor — Selected Public Companies Analysis", "page": "PDF p.67 / p.56", "as_of": "2022-01-14",
+      "snippet": "12.5x to 15.0x ... Implied Equity Value Per Share Reference Range Based On: CY2022E EBITDA $69.08 – $89.05; CY2023E EBITDA $77.93 – $91.67",
+      "note": "ASSUMPTION (Allen & Company's selected range). Metric: CY2023E Adj. EBITDA 4,403 (management forecast, PDF p.62 / p.51)."
+    },
+    "valuation.multiples[2]": {
+      "document": "DEFM14A", "section": "Opinion of Activision Blizzard's Financial Advisor — Selected Precedent Transactions Analysis", "page": "PDF p.67 / p.56", "as_of": "2022-01-14",
+      "snippet": "applied a selected range of latest 12 months EBITDA multiples derived from the selected transactions of 14.0x to 20.0x to the latest 12 months (as of December 31, 2021) EBITDA of Activision Blizzard based on the Activision Blizzard forecasts ... $72.40 – $99.49",
+      "note": "ASSUMPTION (Allen & Company's selected range; 11 transactions, observed 5.6x–29.9x). Metric: 2021E Adj. EBITDA 3,615 (management forecast, PDF p.62 / p.51) as the LTM figure at 31 Dec 2021."
+    },
+    "valuation.references[0]": {
+      "document": "DEFM14A", "section": "Opinion of Activision Blizzard's Financial Advisor — Certain Additional Information", "page": "PDF p.68 / p.57", "as_of": "2022-01-14",
+      "snippet": "historical trading prices of Activision Blizzard common stock during the 52-week period ended January 14, 2022, which indicated low to high intraday prices ... of approximately $56.40 to $104.53 per share"
+    },
+    "valuation.references[1]": {
+      "document": "DEFM14A", "section": "Opinion of Activision Blizzard's Financial Advisor — Certain Additional Information", "page": "PDF p.68 / p.57", "as_of": "2022-01-14",
+      "snippet": "publicly available Wall Street research analysts' forward stock price targets for Activision Blizzard common stock, which indicated an overall low to high target price range ... of $54.00 to $125.00 per share"
     },
     "dcf.terminal_growth": {
       "document": "DEFM14A", "section": "Opinion of Activision Blizzard's Financial Advisor — Discounted Cash Flow Analysis", "page": "PDF p.68 / p.57", "as_of": "2022-01-18",

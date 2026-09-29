@@ -13,8 +13,8 @@ from datetime import date
 from numbers import Real
 
 from .dilution import diluted_share_count
-from .models import (DCFInputs, DealAssumptions, DealFacts, DealInputError, DealInputs, OptionTranche,
-                     ShareBuild)
+from .models import (DCFInputs, DealAssumptions, DealFacts, DealInputError, DealInputs, MultipleValuation,
+                     OptionTranche, Peer, ReferenceRange, ShareBuild, ValuationInputs)
 
 FINANCING_TOLERANCE = 0.001        # financing mix must total 100% +/- 0.1%
 EQUITY_VALUE_TOLERANCE = 0.02      # stated vs calculated equity value: 2%
@@ -96,6 +96,8 @@ def validate(inputs: DealInputs) -> list[str]:
         errors += _share_build_errors(f.share_build)
     if inputs.dcf is not None:
         errors += _dcf_errors(inputs.dcf)
+    if inputs.valuation is not None:
+        errors += _valuation_errors(inputs.valuation)
 
     mix_total = a.financing_cash + a.financing_debt + a.financing_stock
     if abs(mix_total - 1) > FINANCING_TOLERANCE:
@@ -165,6 +167,50 @@ def _dcf_errors(d) -> list[str]:
     for name, axis, low in (("wacc_range", d.wacc_range, 0.0), ("growth_range", d.growth_range, -0.5)):
         if not isinstance(axis, (list, tuple)) or not all(_is_number(x) and low < x < 1 for x in axis):
             errors.append(f"dcf.{name} must be a list of decimals (e.g. 0.07 for 7%).")
+    return errors
+
+
+def _valuation_errors(v) -> list[str]:
+    """Checks for comps / precedents / reference ranges."""
+    if not isinstance(v, ValuationInputs):
+        return [f"valuation must be a ValuationInputs (got {type(v).__name__})."]
+    errors: list[str] = []
+    text = lambda x: isinstance(x, str) and x.strip()
+    positive = lambda x: _is_number(x) and x > 0
+    for i, m in enumerate(v.multiples):
+        where = f"valuation.multiples[{i}]"
+        if not isinstance(m, MultipleValuation):
+            errors.append(f"{where} must be a MultipleValuation."); continue
+        if not text(m.name):
+            errors.append(f"{where}.name must be non-empty text.")
+        if m.method not in ("comps", "precedents"):
+            errors.append(f"{where}.method must be 'comps' or 'precedents' (got {m.method!r}).")
+        if not text(m.metric_label):
+            errors.append(f"{where}.metric_label must be non-empty text (e.g. 'LTM EBITDA').")
+        if not positive(m.metric_value):
+            errors.append(f"{where}.metric_value must be a number greater than zero (multiples of a zero or "
+                          f"negative metric are not meaningful).")
+        for j, p in enumerate(m.peers):
+            if not isinstance(p, Peer) or not text(p.name) or not positive(p.multiple):
+                errors.append(f"{where}.peers[{j}] needs a name and a multiple greater than zero.")
+        lo, hi = m.multiple_low, m.multiple_high
+        if lo is None and hi is None:
+            if not m.peers:
+                errors.append(f"{where} needs peers or a selected multiple range (multiple_low and multiple_high).")
+        elif not (positive(lo) and positive(hi)):
+            errors.append(f"{where}: multiple_low and multiple_high must both be numbers greater than zero.")
+        elif lo > hi:
+            errors.append(f"{where}: multiple_low ({lo}) must not exceed multiple_high ({hi}).")
+    for i, r in enumerate(v.references):
+        where = f"valuation.references[{i}]"
+        if not isinstance(r, ReferenceRange):
+            errors.append(f"{where} must be a ReferenceRange."); continue
+        if not text(r.name):
+            errors.append(f"{where}.name must be non-empty text.")
+        if not (positive(r.low) and positive(r.high)):
+            errors.append(f"{where}: low and high must be per-share prices greater than zero.")
+        elif r.low > r.high:
+            errors.append(f"{where}: low ({r.low}) must not exceed high ({r.high}).")
     return errors
 
 
