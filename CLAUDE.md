@@ -176,7 +176,12 @@ python -m pytest -v                        # run all tests
   `server-side-fallback-2026-07-01`; statements removed on unsupported
   numbers, unknown item ids or kind/provenance mismatch). `anthropic==1.9.0`
   added. Key from `st.secrets` / env only. Tests never call the API.
-- **Step 7 — Deal memo: NEXT.**
+- **Step 7 — Deal memo: COMPLETE.** 271 tests. `reports/memo.py` builds HTML
+  (self-contained CSS, football field in HTML/CSS, prints to PDF) + Markdown
+  from templates filled with engine figures; optional AI section only from a
+  `CheckedReport`. Memo tab with "Generate Deal Memo" + two downloads. A test
+  runs the number checker over the whole memo.
+- **Step 8 — Visual polish + landing page: NEXT.**
 
 ## Roadmap (agreed with Anna on 29 Sep 2026)
 Done: 1 transaction engine · 2 fully diluted shares + Activision · 3 Streamlit
@@ -211,7 +216,7 @@ deal-lens/
 ├── tests/
 ├── ai/             # later: analyst, prompts, number checker
 ├── extraction/     # later: PDF parsing with citations
-├── reports/        # later: deal memo
+├── reports/        # deal memo
 └── ui/ + app.py    # later: Streamlit
 ```
 

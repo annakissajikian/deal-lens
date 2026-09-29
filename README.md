@@ -22,6 +22,8 @@ ranges and a football field chart against the offer price (Valuation tab).
 **Step 6 — AI analyst.** Claude interprets the engine's outputs; a number
 checker removes any sentence with a figure the engine did not produce
 (AI analyst tab).
+**Step 7 — Deal memo.** One click builds a preliminary deal memo from the
+engine outputs, downloadable as HTML (prints to PDF) or Markdown (Memo tab).
 
 ## Quick start
 
@@ -48,7 +50,8 @@ deal-lens/
 │   ├── deal_form.py             # New deal form: grouped inputs, inline errors, export
 │   ├── overview.py              # Deal Overview tab: headline tiles, deal terms, warnings
 │   ├── valuation.py             # Valuation tab: football field, comps and precedents
-│   └── financials.py            # Financials tab: tagged tables and sources
+│   ├── financials.py            # Financials tab: tagged tables and sources
+│   └── memo_panel.py            # Memo tab: generate + download
 ├── .streamlit/config.toml       # app theme
 ├── finance/                     # deterministic engine, no AI
 │   ├── models.py                # DealInfo, DealFacts, DealAssumptions, Metric
@@ -61,6 +64,8 @@ deal-lens/
 │   ├── payload.py               # the only data the model sees, with provenance tags
 │   ├── number_checker.py        # rejects figures the engine did not produce
 │   └── analyst.py               # Claude API call (structured output) + checks
+├── reports/
+│   └── memo.py                  # deal memo (HTML + Markdown), templates filled by the engine
 ├── utils/
 │   ├── io.py                    # JSON file -> DealInputs
 │   └── formatting.py            # 13.60x, 20.0%, $6,000m, n.m.
@@ -76,6 +81,7 @@ deal-lens/
     ├── test_dcf.py              # hand-calculated DCF and sensitivity grid
     ├── test_comps.py            # hand-calculated comps, precedents, football field
     ├── test_ai.py               # payload, number checker, statement checks (no API calls)
+    ├── test_memo.py             # memo content; no number the engine did not produce
     ├── test_activision.py       # real-deal regression test
     ├── test_app.py              # web app, run headless with Streamlit AppTest
     ├── test_deal_form.py        # New deal form: conversions, saving, headless form runs
@@ -214,6 +220,15 @@ cited items gets the statement removed, and the reason is listed.
 Set-up: put `ANTHROPIC_API_KEY = "sk-ant-..."` in `.streamlit/secrets.toml`
 (gitignored). Without a key the tab says the analyst is unavailable; all
 other tabs work.
+
+## Deal memo
+
+*Generate Deal Memo* (Memo tab) builds a memo with a transaction summary,
+target financials with sources, the DCF, a football field, warnings and
+limitations, and the sources list. If an AI analysis was generated, it is
+added as its own section with each statement tagged. Every sentence is a
+Python template filled with engine figures; a test runs the number checker
+over the whole memo to prove it contains no figure the engine did not produce.
 
 ## Limitations
 
