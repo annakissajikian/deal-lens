@@ -46,8 +46,7 @@ def render_ai(analysis: TransactionAnalysis, sources: dict, dcf: Optional[DCFAna
         return
 
     payload = build_payload(analysis, sources, dcf, valuation)
-    digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:16]
-    state_key = f"{key_prefix}_ai_{digest}"                # one analysis per exact set of inputs
+    state_key = _state_key(payload, key_prefix)
     if st.button("Generate AI analysis", type="primary", key=f"{key_prefix}_ai_button"):
         with st.spinner("Claude is reviewing the engine outputs..."):
             try:
@@ -59,6 +58,19 @@ def render_ai(analysis: TransactionAnalysis, sources: dict, dcf: Optional[DCFAna
         st.error(result)
     elif isinstance(result, CheckedReport):
         render_report(result)
+
+
+def _state_key(payload: dict, key_prefix: str) -> str:
+    """One stored analysis per exact set of inputs (changing any input needs a new analysis)."""
+    digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:16]
+    return f"{key_prefix}_ai_{digest}"
+
+
+def latest_report(analysis: TransactionAnalysis, sources: dict, dcf: Optional[DCFAnalysis],
+                  valuation: Optional[ValuationAnalysis], key_prefix: str) -> Optional[CheckedReport]:
+    """The checked AI report for these exact inputs, if one was generated this session."""
+    result = st.session_state.get(_state_key(build_payload(analysis, sources, dcf, valuation), key_prefix))
+    return result if isinstance(result, CheckedReport) else None
 
 
 def render_report(r: CheckedReport) -> None:

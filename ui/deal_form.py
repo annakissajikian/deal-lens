@@ -23,6 +23,7 @@ from finance.transaction import analyse_transaction
 from ui.ai_panel import render_ai
 from ui.dcf import render_dcf
 from ui.financials import render_financials
+from ui.memo_panel import render_memo
 from ui.overview import render_overview
 from ui.valuation import render_valuation
 from utils.formatting import SYMBOLS, md
@@ -285,8 +286,8 @@ def render_deal_form(deals: dict) -> None:
     st.caption("Enter the deal, press Run analysis, then review the results tabs. "
                "Percentages are typed as 25 for 25%. Leave optional fields blank if not available.")
     # Own key + default: otherwise Streamlit reuses the saved-deal view's active "Deal Overview" tab
-    inputs_tab, overview_tab, financials_tab, dcf_tab, valuation_tab, ai_tab = st.tabs(
-        ["Inputs", "Deal Overview", "Financials", "DCF", "Valuation", "AI analyst"],
+    inputs_tab, overview_tab, financials_tab, dcf_tab, valuation_tab, ai_tab, memo_tab = st.tabs(
+        ["Inputs", "Deal Overview", "Financials", "DCF", "Valuation", "AI analyst", "Memo"],
         key="f_tabs", default="Inputs")
 
     with inputs_tab:
@@ -420,7 +421,8 @@ def render_deal_form(deals: dict) -> None:
                         (financials_tab, lambda r: render_financials(r[1], NO_SOURCES)),
                         (dcf_tab, lambda r: render_dcf(r[1], r[2])),
                         (valuation_tab, lambda r: render_valuation(r[3], r[0]["deal"]["currency"])),
-                        (ai_tab, lambda r: render_ai(r[1], NO_SOURCES, r[2], r[3], key_prefix="form"))):
+                        (ai_tab, lambda r: render_ai(r[1], NO_SOURCES, r[2], r[3], key_prefix="form")),
+                        (memo_tab, lambda r: render_memo(r[1], NO_SOURCES, r[2], r[3], key_prefix="form"))):
         with tab:
             if result is None or stale:
                 st.info("Run the analysis from the Inputs tab to see results here.")

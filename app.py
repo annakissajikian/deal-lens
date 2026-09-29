@@ -21,6 +21,7 @@ from ui.ai_panel import render_ai
 from ui.dcf import render_dcf
 from ui.deal_form import render_deal_form
 from ui.financials import render_financials
+from ui.memo_panel import render_memo
 from ui.overview import render_overview
 from ui.valuation import render_valuation
 from utils.formatting import md
@@ -57,8 +58,8 @@ def show_saved_deal(label: str) -> None:
     sources = load_sources(deals[label])
     dcf = analyse_dcf(deal)
     valuation = analyse_valuation(deal, dcf)
-    overview_tab, financials_tab, dcf_tab, valuation_tab, ai_tab = st.tabs(
-        ["Deal Overview", "Financials", "DCF", "Valuation", "AI analyst"])
+    overview_tab, financials_tab, dcf_tab, valuation_tab, ai_tab, memo_tab = st.tabs(
+        ["Deal Overview", "Financials", "DCF", "Valuation", "AI analyst", "Memo"])
     with overview_tab:
         render_overview(analysis, sources)
     with financials_tab:
@@ -69,6 +70,8 @@ def show_saved_deal(label: str) -> None:
         render_valuation(valuation, info.currency)
     with ai_tab:
         render_ai(analysis, sources, dcf, valuation, key_prefix="saved")
+    with memo_tab:
+        render_memo(analysis, sources, dcf, valuation, key_prefix="saved")
 
 
 if mode == MODES[1]:
