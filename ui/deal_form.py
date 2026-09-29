@@ -26,6 +26,7 @@ from ui.financials import render_financials
 from ui.memo_panel import render_memo
 from ui.overview import render_overview
 from ui.valuation import render_valuation
+from ui.settings import allow_save
 from utils.formatting import SYMBOLS, md
 from utils.io import deal_filename, deal_from_dict, save_deal
 
@@ -435,6 +436,9 @@ def _render_export(raw: dict) -> None:
     c1, c2 = st.columns(2)
     c1.download_button("Download deal as JSON", data=json.dumps(raw, indent=2, ensure_ascii=False),
                        file_name=deal_filename(raw), mime="application/json")
+    if not allow_save():                  # e.g. Streamlit Cloud, whose disk resets on restart
+        c2.caption("Saving to the server is switched off on this deployment: download the JSON instead.")
+        return
     with c2:
         st.checkbox("Overwrite if the file already exists", key="f_overwrite")
         st.button(f"Save to data/user_deals/{deal_filename(raw)}", on_click=_save)

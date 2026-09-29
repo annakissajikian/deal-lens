@@ -279,3 +279,12 @@ def test_form_valuation_tab_for_activision():
     at = new_deal_app("Example: Microsoft Corporation / Activision Blizzard, Inc.")
     click(at, "Run analysis")
     assert len(at.main.tabs[4].get("vega_lite_chart")) == 1                     # football field
+
+
+def test_save_hidden_when_switched_off(monkeypatch):
+    monkeypatch.setattr("ui.deal_form.allow_save", lambda: False)
+    at = new_deal_app()
+    click(at, "Run analysis")
+    assert not [b for b in at.button if b.label.startswith("Save to data/user_deals/")]
+    assert len(at.get("download_button")) == 1
+    assert any("Saving to the server is switched off" in c.value for c in at.caption)

@@ -177,3 +177,35 @@ def test_app_without_api_key_says_unavailable(isolated_deal_folders, monkeypatch
     at.sidebar.radio(key="mode").set_value("Example & saved deals").run()
     at.sidebar.selectbox[0].select("Example: Microsoft Corporation / Activision Blizzard, Inc.").run()
     assert at.main.tabs[4].info[0].value.startswith("AI analyst unavailable: no API key configured.")
+
+
+# ------------------------------------------------------------------ settings --
+
+def test_settings_read_secrets_or_environment(monkeypatch):
+    from ui import settings
+    monkeypatch.setattr(settings, "setting", lambda name: {"DEALLENS_ALLOW_SAVE": "false",
+                                                           "DEALLENS_AI_SESSION_LIMIT": "5"}.get(name))
+    assert settings.allow_save() is False and settings.ai_session_limit() == 5
+    monkeypatch.setattr(settings, "setting", lambda name: None)
+    assert settings.allow_save() is True and settings.ai_session_limit() == 3          # defaults
+    monkeypatch.setattr(settings, "setting", lambda name: "lots")
+    assert settings.ai_session_limit() == 3                                            # invalid -> default
+
+
+def test_ai_analyses_are_capped_per_session(isolated_deal_folders, monkeypatch):
+    calls = []
+    def fake(payload, key):                              # stands in for the API call
+        calls.append(1)
+        return check_report(report(), payload)
+    monkeypatch.setattr("ui.ai_panel.api_key", lambda: "test-key")
+    monkeypatch.setattr("ui.ai_panel.ask_analyst", fake)
+    monkeypatch.setattr("ui.ai_panel.ai_session_limit", lambda: 1)
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=30).run()
+    at.sidebar.radio(key="mode").set_value("Example & saved deals").run()
+    at.sidebar.selectbox[0].select("Example: Microsoft Corporation / Activision Blizzard, Inc.").run()
+    next(b for b in at.button if b.label == "Generate AI analysis").click().run()
+    assert len(calls) == 1
+    tab = at.main.tabs[4]
+    assert any("has used its 1 AI analyses" in i.value for i in tab.info)
+    assert not [b for b in at.button if b.label == "Generate AI analysis"]    # no way past the cap
+    assert any(m.value == "Microsoft is paying a full price." for m in tab.markdown)   # result still shown

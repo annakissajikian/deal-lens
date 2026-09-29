@@ -1,31 +1,70 @@
 # DealLens — AI-Powered M&A Analyst
 
-A preliminary M&A screening tool. Every financial metric is calculated
-deterministically in Python. AI (added in a later step) will only interpret
-these results; it is never used as a calculator.
+**Preliminary M&A analysis in minutes: valuation, premium and a deal memo, with
+every figure calculated in Python and traced to its source.**
+
+**Live demo:** _link added after deployment_ · Built by Anna Kissajikian
 
 > Preliminary analytical tool for educational purposes. Not investment advice.
 
-## Status
+![DealLens landing page](docs/screenshots/landing.png)
 
-**Step 1 — Transaction engine.** Complete.
-**Step 2 — Fully diluted shares (treasury stock method).** Complete, with a
-real-deal test case: Microsoft / Activision Blizzard (see below).
-**Step 3 — Streamlit web app.** Deal Overview and Financials tabs for any
-deal file in `data/sample_deals/`.
-**Step 3b — New deal form.** Enter a deal in the app, validate it, run it,
-and download or save it as JSON.
-**Step 4 — DCF.** Discounted cash flow valuation with a WACC × terminal-growth
-sensitivity heatmap (DCF tab).
-**Step 5 — Comps, precedents, football field.** Multiple-based valuation
-ranges and a football field chart against the offer price (Valuation tab).
-**Step 6 — AI analyst.** Claude interprets the engine's outputs; a number
-checker removes any sentence with a figure the engine did not produce
-(AI analyst tab).
-**Step 7 — Deal memo.** One click builds a preliminary deal memo from the
-engine outputs, downloadable as HTML (prints to PDF) or Markdown (Memo tab).
-**Step 8 — Landing page and brand.** The app opens on a landing page with
-*Analyse a deal* and a one-click Microsoft / Activision example.
+## What it does
+
+- **Transaction engine**: equity value, enterprise value, premium, trading and
+  transaction multiples, synergy-adjusted multiples, financing split.
+- **Fully diluted shares** by the treasury stock method (options by tranche,
+  RSUs/PSUs).
+- **DCF** with a colour-coded WACC × terminal-growth sensitivity heatmap.
+- **Trading comps and precedent transactions**, lined up with the DCF and
+  market reference ranges on a **football field** against the offer price.
+- **AI analyst** (Claude): interprets the engine's outputs, never calculates;
+  every sentence is tagged fact / assumption / calculated / AI interpretation,
+  and a **number checker** removes any figure the engine did not produce.
+- **Deal memo**: one click, downloadable as HTML (prints to PDF) or Markdown.
+- **New deal form** with validation shown next to each field, plus JSON
+  download, so any deal can be analysed.
+
+## The example: Microsoft / Activision Blizzard (Jan 2022)
+
+Every input comes from Activision's FY2021 10-K, the merger proxy (DEFM14A)
+and Microsoft's announcement, with the document, page and a quoted snippet
+recorded for each figure.
+
+| Output | DealLens | Published cross-check |
+|---|---|---|
+| Enterprise value at the $95.00 offer | $68,824m | $68.7bn headline "inclusive of net cash" (+0.18%) |
+| Premium to the $65.39 unaffected close | 45.3% | "approximately 45.3%" (proxy) |
+| DCF value per share (WACC 7.25%, g 2.50%) | $99.03 | — |
+| DCF range over Allen & Co's WACC / growth ranges | $83.52–$122.79 | $84.73–$123.87 (fairness opinion) |
+| Comps / precedents per-share ranges | within 1% of Allen & Co's | proxy pp.55–56 |
+
+| | |
+|---|---|
+| ![Deal overview](docs/screenshots/overview.png) | ![DCF sensitivity heatmap](docs/screenshots/dcf.png) |
+| ![Football field](docs/screenshots/valuation.png) | ![Deal memo](docs/screenshots/memo.png) |
+
+## How it works
+
+```
+deal JSON / New deal form ──> utils/io.deal_from_dict() ──> finance/ (validation + formulas)
+                                                               │  Metric objects: value, formula,
+                                                               │  fact / assumption provenance
+             ┌──────────────────────────┬──────────────────────┴─────────────┐
+             ▼                          ▼                                    ▼
+   ui/ (Streamlit tabs,          ai/ payload ──> Claude ──> number     reports/memo.py
+   display only)                 checker (rejects unproduced figures)  (templates filled
+                                                                       with engine figures)
+```
+
+Design rules: **Python calculates, AI interprets** (`finance/` never imports
+`ai/`); **no invented data** (a missing figure is "unavailable", never
+guessed); **facts, assumptions, calculated figures and AI interpretation stay
+labelled** everywhere; every formula has **hand-calculated tests** (277 tests,
+including headless tests of the web app).
+
+**Tech stack:** Python 3 · Streamlit · Altair · pandas · Anthropic Claude API
+(`claude-opus-5-5`, structured outputs) · pytest.
 
 ## Quick start
 
@@ -55,8 +94,10 @@ deal-lens/
 │   ├── valuation.py             # Valuation tab: football field, comps and precedents
 │   ├── financials.py            # Financials tab: tagged tables and sources
 │   ├── home.py                  # landing page
+│   ├── settings.py              # deployment settings from secrets / environment
 │   └── memo_panel.py            # Memo tab: generate + download
-├── .streamlit/config.toml       # app theme
+├── .streamlit/config.toml       # app theme (secrets.toml.example: deployment settings)
+├── docs/screenshots/            # images used in this README
 ├── finance/                     # deterministic engine, no AI
 │   ├── models.py                # DealInfo, DealFacts, DealAssumptions, Metric
 │   ├── validation.py            # errors (stop) and warnings (review)
@@ -94,36 +135,43 @@ deal-lens/
 
 ## Web app
 
-`streamlit run app.py` opens the app. Choose a deal in the sidebar:
+`streamlit run app.py` opens the landing page. The sidebar has three sections:
 
-- **Deal Overview**: enterprise value, equity value, premium and EV/EBITDA
-  tiles; deal terms; warnings.
-- **Financials**: target financials, assumptions and every calculated metric
-  with its formula, each tagged **Fact**, **Fact · derived** (built from filing
-  figures, e.g. EBITDA), **Assumption**, **Calculated** or **Calculated · uses
-  assumptions**. For a real deal, a Sources section traces every figure to its
-  document, page and quoted snippet, and shows the published cross-checks.
-
-**New deal** (sidebar mode *Enter a new deal*): fill in deal info, deal
-terms, share count (entered directly or built with the treasury stock method),
-target financials and assumptions, optionally starting from an existing deal.
-*Run analysis* validates everything at once: errors appear in a summary and
-under the group they belong to. A valid deal shows the same two tabs and can
-be downloaded as JSON or saved to `data/user_deals/` (it then appears in the
-dropdown as "Saved: ..."; existing files are never overwritten without
-ticking *Overwrite*). Form entries use the same parser and validation as deal
-files. Percentages are typed as 25 for 25% and stored as 0.25. Blank optional
-fields mean "not provided", never zero. Deals entered in the form have no
-`_sources` and are marked as not source-verified.
+- **Home**: *Analyse a deal* (opens the form) or *Try the example*.
+- **Example & saved deals**: the Microsoft / Activision example ("Example: …")
+  and deals you saved ("Saved: …"), with tabs **Deal Overview**,
+  **Financials** (every figure tagged Fact, Fact · derived, Assumption,
+  Calculated or Calculated · uses assumptions, and a Sources section with
+  document, page and quoted snippet), **DCF**, **Valuation**, **AI analyst**
+  and **Memo**.
+- **New deal**: grouped inputs (deal info, deal terms, share count, target
+  financials, assumptions, optional DCF, comps / precedents / reference
+  ranges), optionally starting from an existing deal. *Run analysis* validates
+  everything at once, with errors in a summary and under their group, and
+  shows the same result tabs. Download the deal as JSON, or save it locally
+  to `data/user_deals/`. Percentages are typed as 25 for 25%; blank optional
+  fields mean "not provided", never zero.
 
 The app only displays results: all numbers come from `finance/`.
+
+## Deployment (Streamlit Community Cloud)
+
+1. Push this repository to GitHub.
+2. At share.streamlit.io, sign in with GitHub → *Create app* → pick the
+   repository, branch `main`, main file `app.py`.
+3. In the app's *Settings → Secrets*, paste the contents of
+   `.streamlit/secrets.toml.example` with your real key:
+   `ANTHROPIC_API_KEY` (AI analyst), `DEALLENS_AI_SESSION_LIMIT = 3` (caps AI
+   calls per visitor session) and `DEALLENS_ALLOW_SAVE = "false"` (the cloud
+   disk resets, so visitors download their deal instead).
 
 ## Conventions
 
 - Money and shares in **millions**; prices **per share**.
 - Percentages as decimals: `0.30` = 30%.
 - Multiples with a missing, zero or negative denominator show **n.m.**
-- Metrics marked **[A]** depend on user assumptions; all others use facts only.
+- Metrics marked **[A]** (terminal) or tagged "uses assumptions" (app) depend on
+  user assumptions; all others use facts only.
 
 ## Formulas
 

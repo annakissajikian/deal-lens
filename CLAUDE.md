@@ -188,8 +188,15 @@ python -m pytest -v                        # run all tests
   `logo_wordmark.svg` via `st.logo`; brand navy `#1F3A5F`, accent `#2A78D6`.
   Sample deals are labelled "Example: …", user deals "Saved: …". App tests
   must switch `mode` first (the landing page is the default view).
-- **Step 9 — Deploy to Streamlit Community Cloud: NEXT** (needs Anna's GitHub
-  + Streamlit accounts and, for the AI analyst, an Anthropic API key).
+- **Step 9 — Deploy to Streamlit Community Cloud: IN PROGRESS.** Code ready,
+  277 tests. Decisions (Anna, 29 Sep 2026): public GitHub repo; AI analyst on
+  with Anna's key + cap of 3 analyses per visitor session
+  (`DEALLENS_AI_SESSION_LIMIT`); Save hidden online (`DEALLENS_ALLOW_SAVE =
+  "false"`). Settings read by `ui/settings.py` from `st.secrets` / env;
+  template `.streamlit/secrets.toml.example`. README rewritten for the CV
+  with screenshots in `docs/screenshots/`; live URL still to be added.
+  Waiting for Anna: Anthropic API key (local test first), GitHub repo +
+  `git push`, Streamlit Cloud app + secrets.
 
 ## Roadmap (agreed with Anna on 29 Sep 2026)
 Done: 1 transaction engine · 2 fully diluted shares + Activision · 3 Streamlit

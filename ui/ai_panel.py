@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from typing import Optional
 
 import streamlit as st
@@ -17,6 +16,7 @@ from ai.payload import build_payload
 from finance.comps import ValuationAnalysis
 from finance.dcf import DCFAnalysis
 from finance.models import TransactionAnalysis
+from ui.settings import ai_session_limit, setting
 from utils.formatting import md
 
 # kind -> (badge label, colour); the badge makes the provenance of each sentence visible
@@ -26,11 +26,7 @@ KINDS = {"fact": ("Fact", "gray"), "assumption": ("Assumption", "orange"),
 
 def api_key() -> Optional[str]:
     """ANTHROPIC_API_KEY from .streamlit/secrets.toml, else the environment; None if neither is set."""
-    try:
-        key = st.secrets.get("ANTHROPIC_API_KEY")
-    except Exception:                 # no secrets file at all
-        key = None
-    return key or os.environ.get("ANTHROPIC_API_KEY") or None
+    return setting("ANTHROPIC_API_KEY")
 
 
 def render_ai(analysis: TransactionAnalysis, sources: dict, dcf: Optional[DCFAnalysis],
@@ -47,12 +43,20 @@ def render_ai(analysis: TransactionAnalysis, sources: dict, dcf: Optional[DCFAna
 
     payload = build_payload(analysis, sources, dcf, valuation)
     state_key = _state_key(payload, key_prefix)
-    if st.button("Generate AI analysis", type="primary", key=f"{key_prefix}_ai_button"):
-        with st.spinner("Claude is reviewing the engine outputs..."):
-            try:
-                st.session_state[state_key] = ask_analyst(payload, key)
-            except AnalystUnavailable as exc:
-                st.session_state[state_key] = str(exc)
+    limit = ai_session_limit()
+    if st.session_state.get("ai_calls", 0) < limit:
+        if st.button("Generate AI analysis", type="primary", key=f"{key_prefix}_ai_button"):
+            st.session_state.ai_calls = st.session_state.get("ai_calls", 0) + 1
+            with st.spinner("Claude is reviewing the engine outputs..."):
+                try:
+                    st.session_state[state_key] = ask_analyst(payload, key)
+                except AnalystUnavailable as exc:
+                    st.session_state[state_key] = str(exc)
+            st.rerun()                        # redraw with the new count (hides the button at the cap)
+        st.caption(f"AI analyses used this session: {st.session_state.get('ai_calls', 0)} of {limit}.")
+    else:                                     # cap reached: no more calls, earlier results still shown
+        st.info(f"This session has used its {limit} AI analyses (a cap that keeps the public demo's API costs "
+                f"bounded). Reload the page to start a new session.")
     result = st.session_state.get(state_key)
     if isinstance(result, str):
         st.error(result)
