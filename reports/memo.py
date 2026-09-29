@@ -5,8 +5,9 @@ Deterministic: every sentence is a template filled with engine figures, so the
 memo can never contain a number the engine did not produce. The optional AI
 section contains only statements that passed the number checker, each tagged.
 
-build_memo() returns the memo as HTML (styled, prints to PDF from a browser)
-and as Markdown.
+build_memo() returns the memo as a Word document (.docx, editable, can be saved
+as PDF from Word), as HTML (styled, prints to PDF from a browser) and as Markdown.
+All three are rendered from the same list of sections, so their figures match.
 """
 
 from __future__ import annotations
@@ -14,7 +15,15 @@ from __future__ import annotations
 import html
 from dataclasses import dataclass
 from datetime import date
+from io import BytesIO
 from typing import Optional
+
+from docx import Document
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt, RGBColor
+from PIL import Image, ImageDraw, ImageFont
 
 from ai.analyst import CheckedReport
 from finance.comps import ValuationAnalysis
@@ -28,6 +37,8 @@ AI_TAGS = {"fact": "Fact", "assumption": "Assumption", "calculated": "Calculated
            "interpretation": "AI interpretation"}
 CATEGORY_COLOURS = {"DCF": "#2a78d6", "Trading comps": "#eb6834", "Precedent transactions": "#1baf7a",
                     "Market reference": "#eda100"}
+NAVY, INK, MUTED, RULE, HEADER_FILL = "1F3A5F", "1A1A1A", "52514E", "E1E0D9", "F4F6F9"
+PLAIN_GLYPHS = str.maketrans({"×": "x", "–": "-", "−": "-", "·": "-", "÷": "/"})
 
 
 @dataclass
@@ -35,6 +46,7 @@ class Memo:
     title: str
     html: str
     markdown: str
+    docx: bytes
     filename_stem: str
 
 
@@ -146,7 +158,7 @@ def build_memo(analysis: TransactionAnalysis, sources: dict, dcf: Optional[DCFAn
 
     stem = "".join(c if c.isalnum() else "_" for c in f"deal_memo_{info.acquirer}_{info.target}".lower())
     return Memo(title, _html(title, generated, sections), _markdown(title, generated, sections),
-                "_".join(p for p in stem.split("_") if p))
+                _docx(title, generated, sections), "_".join(p for p in stem.split("_") if p))
 
 
 def _source(s: dict) -> str:
@@ -241,3 +253,148 @@ footer {{ margin-top: 36px; padding-top: 12px; border-top: 1px solid #e1e0d9; co
 calculated figures and AI interpretation are labelled throughout.</footer>
 </body></html>
 """
+
+
+# -------------------------------------------------------------- Word (.docx) --
+
+def football_field_png(v: ValuationAnalysis, cur: str) -> bytes:
+    """The football field as a PNG (for the Word memo), drawn with Pillow's built-in font."""
+    scale = 2                                                  # draw at 2x for a crisp image in Word
+    label_w, row_h, top, bottom, width = 330 * scale, 30 * scale, 34 * scale, 44 * scale, 1000 * scale
+    height = top + row_h * len(v.bars) + bottom
+    img = Image.new("RGB", (width, height), "white")
+    draw = ImageDraw.Draw(img)
+    font, bold = ImageFont.load_default(size=12 * scale), ImageFont.load_default(size=12 * scale)
+    lo = min([b.low for b in v.bars] + [v.offer_price, v.unaffected_price])
+    hi = max([b.high for b in v.bars] + [v.offer_price, v.unaffected_price])
+    lo, hi = lo - (hi - lo) * 0.14, hi + (hi - lo) * 0.10      # room for the value labels at both ends
+    track_x0, track_x1 = label_w + 10 * scale, width - 10 * scale
+    x = lambda value: track_x0 + (value - lo) / (hi - lo) * (track_x1 - track_x0)
+    price = lambda value: format_value(value, "per_share", cur)
+    plain = lambda text: text.translate(PLAIN_GLYPHS)          # the built-in font lacks e.g. "×"
+    for i, b in enumerate(v.bars):
+        y0 = top + i * row_h
+        cy = y0 + row_h // 2
+        draw.text((label_w, cy), plain(b.label), fill="#" + MUTED, font=font, anchor="rm")
+        draw.rounded_rectangle((x(b.low), cy - 8 * scale, x(b.high), cy + 8 * scale), radius=4 * scale,
+                               fill=CATEGORY_COLOURS[b.category])
+        draw.text((x(b.low) - 5 * scale, cy), price(b.low), fill="#" + INK, font=font, anchor="rm")
+        draw.text((x(b.high) + 5 * scale, cy), price(b.high), fill="#" + INK, font=font, anchor="lm")
+    y_end = top + row_h * len(v.bars)
+    ox, ux = x(v.offer_price), x(v.unaffected_price)
+    draw.line((ox, top - 4 * scale, ox, y_end), fill="#0B0B0B", width=2 * scale)
+    for y in range(top - 4 * scale, y_end, 9 * scale):         # dashed line for the unaffected price
+        draw.line((ux, y, ux, min(y + 5 * scale, y_end)), fill="#" + MUTED, width=scale + 1)
+    draw.text((ox + 4 * scale, top - 6 * scale), f"Offer {price(v.offer_price)}", fill="#0B0B0B", font=bold,
+              anchor="ls")
+    draw.text((ux - 4 * scale, top - 6 * scale), f"Unaffected {price(v.unaffected_price)}", fill="#" + MUTED,
+              font=bold, anchor="rs")
+    lx, ly = track_x0, y_end + 22 * scale                      # legend: only the methods this deal has
+    for name, colour in CATEGORY_COLOURS.items():
+        if any(b.category == name for b in v.bars):
+            draw.rounded_rectangle((lx, ly - 5 * scale, lx + 10 * scale, ly + 5 * scale), radius=2 * scale,
+                                   fill=colour)
+            draw.text((lx + 14 * scale, ly), name, fill="#" + MUTED, font=font, anchor="lm")
+            lx += (14 * scale) + draw.textlength(name, font=font) + 22 * scale
+    out = BytesIO()
+    img.save(out, format="PNG")
+    return out.getvalue()
+
+
+def _shade(cell, fill: str) -> None:
+    props = cell._tc.get_or_add_tcPr()
+    shading = OxmlElement("w:shd")
+    shading.set(qn("w:val"), "clear"), shading.set(qn("w:color"), "auto"), shading.set(qn("w:fill"), fill)
+    props.append(shading)
+
+
+def _full_width(table, page_width_cm: float = 17.0) -> None:
+    """Stretch a table across the page (Word otherwise shrinks columns to their content).
+
+    The first column (labels) gets a larger share; every cell gets an explicit width,
+    which Word, LibreOffice and macOS Quick Look all respect.
+    """
+    table.autofit = False
+    width = table._tbl.tblPr.find(qn("w:tblW"))
+    if width is None:
+        width = OxmlElement("w:tblW")
+        table._tbl.tblPr.append(width)
+    width.set(qn("w:w"), "5000"), width.set(qn("w:type"), "pct")        # 5000 = 100% of the page
+    shares = [1.6] + [1.0] * (len(table.columns) - 1)
+    widths = [Cm(page_width_cm * share / sum(shares)) for share in shares]
+    for grid_col, w in zip(table._tbl.tblGrid.findall(qn("w:gridCol")), widths):
+        grid_col.set(qn("w:w"), str(int(w.twips)))                      # grid matches the cells
+    for column, w in zip(table.columns, widths):
+        for cell in column.cells:
+            cell.width = w
+
+
+def _rule(paragraph, colour: str = NAVY, size: int = 12) -> None:
+    """A horizontal line under a paragraph (Word paragraph border)."""
+    borders = OxmlElement("w:pBdr")
+    bottom = OxmlElement("w:bottom")
+    for key, value in (("val", "single"), ("sz", str(size)), ("space", "4"), ("color", colour)):
+        bottom.set(qn(f"w:{key}"), value)
+    borders.append(bottom)
+    paragraph._p.get_or_add_pPr().append(borders)
+
+
+def _run(paragraph, text: str, size: float, colour: str = INK, bold: bool = False):
+    run = paragraph.add_run(text)
+    run.font.size, run.font.bold, run.font.color.rgb = Pt(size), bold, RGBColor.from_string(colour)
+    return run
+
+
+def _docx(title: str, generated: str, sections) -> bytes:
+    doc = Document()
+    doc.core_properties.title, doc.core_properties.author = f"Deal memo: {title}", "DealLens"
+    for sec in doc.sections:
+        sec.left_margin = sec.right_margin = Cm(2.0)
+        sec.top_margin = sec.bottom_margin = Cm(1.8)
+        _run(sec.footer.paragraphs[0], DISCLAIMER, 8, MUTED)
+    normal = doc.styles["Normal"]
+    normal.font.name, normal.font.size = "Calibri", Pt(10.5)
+    normal.paragraph_format.space_after = Pt(6)
+
+    _run(doc.add_paragraph(), "DEALLENS · PRELIMINARY DEAL MEMO", 9, NAVY, bold=True)
+    _run(doc.add_paragraph(), title, 20, INK, bold=True)
+    meta = doc.add_paragraph()
+    _run(meta, f"Generated {generated} · all figures from the DealLens engine · {DISCLAIMER}", 9, MUTED)
+    _rule(meta)
+
+    for heading, blocks in sections:
+        h = doc.add_paragraph()
+        h.paragraph_format.space_before, h.paragraph_format.keep_with_next = Pt(14), True
+        _run(h, heading, 13, NAVY, bold=True)
+        for block in blocks:
+            if block[0] == "p":
+                doc.add_paragraph(block[1])
+            elif block[0] == "list":
+                for item in block[1]:
+                    doc.add_paragraph(item, style="List Bullet")
+            elif block[0] == "table":
+                header, rows = block[1], block[2]
+                table = doc.add_table(rows=1 + len(rows), cols=len(header))
+                table.alignment = WD_TABLE_ALIGNMENT.LEFT
+                _full_width(table)
+                for r, values in enumerate([header] + rows):
+                    for c, value in enumerate(values):
+                        cell = table.cell(r, c)
+                        cell.text = ""
+                        _run(cell.paragraphs[0], str(value), 9, MUTED if r == 0 else INK, bold=r == 0)
+                        cell.paragraphs[0].paragraph_format.space_after = Pt(2)
+                        if r == 0:
+                            _shade(cell, HEADER_FILL)
+                        _rule(cell.paragraphs[0], RULE, 4)
+                doc.add_paragraph()
+            elif block[0] == "football":
+                doc.add_picture(BytesIO(football_field_png(block[1], block[2])), width=Cm(17))
+
+    closing = doc.add_paragraph()
+    _rule(closing, RULE, 4)
+    _run(doc.add_paragraph(), f"{DISCLAIMER} Figures are calculated deterministically in Python; facts, "
+                              f"assumptions, calculated figures and AI interpretation are labelled throughout.",
+         8.5, MUTED)
+    out = BytesIO()
+    doc.save(out)
+    return out.getvalue()

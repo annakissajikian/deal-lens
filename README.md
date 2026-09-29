@@ -23,9 +23,10 @@ every figure calculated in Python and traced to its source.**
   and a **number checker** removes any figure the engine did not produce.
   Includes a chat box: *Ask a question about this deal*, answered under the
   same rules (anything not calculated is reported as unavailable).
-- **Deal memo**: one click, downloadable as HTML (prints to PDF) or Markdown.
-- **New deal form** with validation shown next to each field, plus JSON
-  download, so any deal can be analysed.
+- **Deal memo**: one click, downloadable as a Word document (.docx, with the
+  football field as a chart; Word can save it as PDF), HTML or Markdown.
+- **New deal form** with validation shown next to each field; after the run,
+  one click downloads the deal memo as a Word document.
 
 ## The example: Microsoft / Activision Blizzard (Jan 2022)
 
@@ -66,7 +67,7 @@ labelled** everywhere; every formula has **hand-calculated tests** (277 tests,
 including headless tests of the web app).
 
 **Tech stack:** Python 3 · Streamlit · Altair · pandas · Anthropic Claude API
-(`claude-opus-5-5`, structured outputs) · pytest.
+(`claude-opus-5-5`, structured outputs) · python-docx · Pillow · pytest.
 
 ## Quick start
 
@@ -112,14 +113,14 @@ deal-lens/
 │   ├── number_checker.py        # rejects figures the engine did not produce
 │   └── analyst.py               # Claude API call (structured output) + checks
 ├── reports/
-│   └── memo.py                  # deal memo (HTML + Markdown), templates filled by the engine
+│   └── memo.py                  # deal memo (Word, HTML, Markdown), templates filled by the engine
 ├── utils/
 │   ├── io.py                    # JSON file -> DealInputs
 │   └── formatting.py            # 13.60x, 20.0%, $6,000m, n.m.
 ├── data/
 │   ├── sample_deals/microsoft_activision.json  # real deal, every figure sourced
 │   ├── sources/                                # saved evidence (e.g. share price screenshot)
-│   └── user_deals/                             # deals saved from the app's New deal form
+│   └── user_deals/                             # optional: deal JSON files you add, listed as "Saved: ..."
 └── tests/
     ├── conftest.py              # isolated deal folders for app tests
     ├── fixtures/illustrative_deal.json  # round-number test deal (not shown in the app)
@@ -150,9 +151,9 @@ deal-lens/
   financials, assumptions, optional DCF, comps / precedents / reference
   ranges), optionally starting from an existing deal. *Run analysis* validates
   everything at once, with errors in a summary and under their group, and
-  shows the same result tabs. Download the deal as JSON, or save it locally
-  to `data/user_deals/`. Percentages are typed as 25 for 25%; blank optional
-  fields mean "not provided", never zero.
+  shows the same result tabs. *Download deal memo (Word)* exports the
+  analysis as a .docx memo. Percentages are typed as 25 for 25%; blank
+  optional fields mean "not provided", never zero.
 
 The app only displays results: all numbers come from `finance/`.
 
@@ -163,9 +164,8 @@ The app only displays results: all numbers come from `finance/`.
    repository, branch `main`, main file `app.py`.
 3. In the app's *Settings → Secrets*, paste the contents of
    `.streamlit/secrets.toml.example` with your real key:
-   `ANTHROPIC_API_KEY` (AI analyst), `DEALLENS_AI_SESSION_LIMIT = 3` (caps AI
-   calls per visitor session) and `DEALLENS_ALLOW_SAVE = "false"` (the cloud
-   disk resets, so visitors download their deal instead).
+   `ANTHROPIC_API_KEY` (AI analyst) and `DEALLENS_AI_SESSION_LIMIT = 3` (caps
+   AI calls per visitor session).
 
 ## Conventions
 
@@ -286,12 +286,16 @@ other tabs work. Tests never read the secrets file or make API calls.
 
 ## Deal memo
 
-*Generate Deal Memo* (Memo tab) builds a memo with a transaction summary,
+*Generate Deal Memo* (Memo tab; also *Download deal memo (Word)* after a
+New deal run) builds a memo with a transaction summary,
 target financials with sources, the DCF, a football field, warnings and
 limitations, and the sources list. If an AI analysis was generated, it is
 added as its own section with each statement tagged. Every sentence is a
 Python template filled with engine figures; a test runs the number checker
 over the whole memo to prove it contains no figure the engine did not produce.
+Formats: Word (.docx, via `python-docx`; the football field is drawn as a PNG
+with Pillow), HTML (prints to PDF) and Markdown, all rendered from the same
+sections so their figures match.
 
 ## Limitations
 

@@ -18,7 +18,7 @@ from streamlit.testing.v1 import AppTest
 from finance.transaction import analyse_transaction
 from ui.deal_form import (BLANK, SHARE_MODES, build_deal_dict, errors_by_group, form_values_from_dict,
                           orphan_peers, percent_list)
-from utils.io import deal_filename, deal_from_dict, load_deal, save_deal
+from utils.io import deal_from_dict, load_deal
 
 ROOT = Path(__file__).parent.parent
 SAMPLES = [ROOT / "tests" / "fixtures" / "illustrative_deal.json",
@@ -117,29 +117,6 @@ def test_errors_are_placed_under_the_right_group():
     assert not any("unexpected" in e for group in placed.values() for e in group)   # summary only
 
 
-# ----------------------------------------------------------------- saving --
-
-def test_deal_filename_is_safe():
-    assert deal_filename({"deal": {"acquirer": "Microsoft Corp.", "target": "Activision Blizzard, Inc."}}) \
-        == "microsoft_corp_activision_blizzard_inc.json"
-    assert deal_filename({"deal": {"acquirer": "../../etc", "target": ""}}) == "etc.json"
-    assert deal_filename({}) == "deal.json"
-
-
-def test_save_refuses_to_overwrite_unless_asked(tmp_path):
-    d = raw(SAMPLES[0])
-    path = save_deal(d, tmp_path / "user_deals")                 # folder created
-    assert path.name == "northwind_holdings_apex_components.json"
-    with pytest.raises(FileExistsError):
-        save_deal(d, tmp_path / "user_deals")
-    save_deal(d, tmp_path / "user_deals", overwrite=True)
-
-
-def test_saved_file_reloads_to_the_same_analysis(tmp_path):
-    d = build_deal_dict(form_values_from_dict(raw(SAMPLES[0])))
-    reloaded = analyse_transaction(load_deal(save_deal(d, tmp_path)))
-    direct = analyse_transaction(deal_from_dict(d))
-    assert {k: m.value for k, m in reloaded.metrics.items()} == {k: m.value for k, m in direct.metrics.items()}
 
 
 # ---------------------------------------------------------- app, headless --
@@ -201,19 +178,6 @@ def test_values_survive_switching_modes():
     at.sidebar.radio(key="mode").set_value("Example & saved deals").run()
     at.sidebar.radio(key="mode").set_value("New deal").run()
     assert at.number_input(key="f_offer_price_per_share").value == 66.0
-
-
-def test_save_button_writes_and_protects_existing_file(isolated_deal_folders):
-    at = new_deal_app()
-    click(at, "Run analysis")
-    click(at, "Save to data/user_deals/")
-    assert (isolated_deal_folders / "northwind_holdings_apex_components.json").exists()
-    assert any(s.value.startswith("Saved to data/user_deals/") for s in at.success)
-    click(at, "Save to data/user_deals/")
-    assert any("already exists" in e.value for e in at.error)
-    at.checkbox(key="f_overwrite").check().run()
-    click(at, "Save to data/user_deals/")
-    assert any(s.value.startswith("Saved to data/user_deals/") for s in at.success)
 
 
 # ---------------------------------------------------------------------- DCF --
@@ -280,11 +244,13 @@ def test_form_valuation_tab_for_activision():
     click(at, "Run analysis")
     assert len(at.main.tabs[4].get("vega_lite_chart")) == 1                     # football field
 
+# ------------------------------------------------------------ memo export --
 
-def test_save_hidden_when_switched_off(monkeypatch):
-    monkeypatch.setattr("ui.deal_form.allow_save", lambda: False)
+def test_export_offers_a_word_memo_not_json():
     at = new_deal_app()
     click(at, "Run analysis")
-    assert not [b for b in at.button if b.label.startswith("Save to data/user_deals/")]
-    assert len(at.get("download_button")) == 1
-    assert any("Saving to the server is switched off" in c.value for c in at.caption)
+    buttons = at.get("download_button")
+    assert len(buttons) == 1
+    assert buttons[0].proto.label == "Download deal memo (Word)"
+    assert not [b for b in at.button if b.label.startswith("Save to")]
+    assert any("Word can save it as PDF" in c.value for c in at.caption)

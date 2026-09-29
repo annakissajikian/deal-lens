@@ -20,15 +20,15 @@ from finance.comps import analyse_valuation
 from finance.dcf import analyse_dcf
 from finance.models import DealInputError
 from finance.transaction import analyse_transaction
-from ui.ai_panel import render_ai
+from ui.ai_panel import latest_report, render_ai
 from ui.dcf import render_dcf
 from ui.financials import render_financials
 from ui.memo_panel import render_memo
 from ui.overview import render_overview
 from ui.valuation import render_valuation
-from ui.settings import allow_save
 from utils.formatting import SYMBOLS, md
-from utils.io import deal_filename, deal_from_dict, save_deal
+from reports.memo import build_memo
+from utils.io import deal_from_dict
 
 PERCENT_FIELDS = ("revenue_synergy_incremental_margin", "financing_cash", "financing_debt",
                   "financing_stock", "tax_rate")
@@ -250,7 +250,6 @@ def _start_from(deals: dict) -> None:
 
 def _run() -> None:
     raw = build_deal_dict(_values())
-    st.session_state.f_save_msg = None
     try:
         deal = deal_from_dict(raw)
         dcf = analyse_dcf(deal)
@@ -258,16 +257,6 @@ def _run() -> None:
         st.session_state.f_errors = []
     except DealInputError as exc:
         st.session_state.f_result, st.session_state.f_errors = None, exc.errors
-
-
-def _save() -> None:
-    raw = st.session_state.f_result[0]
-    try:
-        path = save_deal(raw, overwrite=st.session_state.get("f_overwrite", False))
-        st.session_state.f_save_msg = ("success", f"Saved to data/user_deals/{path.name}. "
-                                                  f"It now appears in the saved-deal dropdown.")
-    except FileExistsError as exc:
-        st.session_state.f_save_msg = ("error", f"{exc} Tick 'Overwrite' to replace it.")
 
 
 def _group_errors(group: str) -> None:
@@ -278,7 +267,7 @@ def _group_errors(group: str) -> None:
 def render_deal_form(deals: dict) -> None:
     if "f_saved" not in st.session_state:
         _load(BLANK)
-        st.session_state.update(f_errors=[], f_result=None, f_save_msg=None)
+        st.session_state.update(f_errors=[], f_result=None)
     for k, val in st.session_state.f_saved.items():            # restore values Streamlit dropped
         if k not in TABLES and f"f_{k}" not in st.session_state:
             st.session_state[f"f_{k}"] = val
@@ -414,7 +403,7 @@ def render_deal_form(deals: dict) -> None:
     with inputs_tab:
         if result is not None and not stale:
             st.success("Analysis ready: see the Deal Overview and Financials tabs.")
-            _render_export(result[0])
+            _render_export(result)
         elif stale:
             st.info("Inputs have changed since the last run: press Run analysis to update the results.")
 
@@ -431,17 +420,15 @@ def render_deal_form(deals: dict) -> None:
                 render(result)
 
 
-def _render_export(raw: dict) -> None:
+def _render_export(result: tuple) -> None:
+    """Download the deal memo for the analysis just run (built by reports/memo.py)."""
+    _, analysis, dcf, valuation = result
+    ai = latest_report(analysis, NO_SOURCES, dcf, valuation, key_prefix="form")
+    memo = build_memo(analysis, NO_SOURCES, dcf, valuation, ai)
     st.subheader("Export")
-    c1, c2 = st.columns(2)
-    c1.download_button("Download deal as JSON", data=json.dumps(raw, indent=2, ensure_ascii=False),
-                       file_name=deal_filename(raw), mime="application/json")
-    if not allow_save():                  # e.g. Streamlit Cloud, whose disk resets on restart
-        c2.caption("Saving to the server is switched off on this deployment: download the JSON instead.")
-        return
-    with c2:
-        st.checkbox("Overwrite if the file already exists", key="f_overwrite")
-        st.button(f"Save to data/user_deals/{deal_filename(raw)}", on_click=_save)
-    msg = st.session_state.f_save_msg
-    if msg:
-        (st.success if msg[0] == "success" else st.error)(msg[1])
+    st.download_button("Download deal memo (Word)", data=memo.docx, file_name=f"{memo.filename_stem}.docx",
+                       mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", type="primary", key="f_memo_docx")
+    st.caption("A preliminary deal memo built from these results: transaction summary, financials, DCF, "
+               "football field, warnings and limitations" + (", and your AI analyst view." if ai else ". "
+               "Generate the AI analysis first to include the AI analyst view.") +
+               " Word can save it as PDF. More formats in the Memo tab.")

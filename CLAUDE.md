@@ -191,8 +191,8 @@ python -m pytest -v                        # run all tests
 - **Step 9 — Deploy to Streamlit Community Cloud: IN PROGRESS.** Code ready,
   277 tests. Decisions (Anna, 29 Sep 2026): public GitHub repo; AI analyst on
   with Anna's key + cap of 3 analyses per visitor session
-  (`DEALLENS_AI_SESSION_LIMIT`); Save hidden online (`DEALLENS_ALLOW_SAVE =
-  "false"`). Settings read by `ui/settings.py` from `st.secrets` / env;
+  (`DEALLENS_AI_SESSION_LIMIT`). (Save / `DEALLENS_ALLOW_SAVE` later removed:
+  see "Word memo export" below.) Settings read by `ui/settings.py` from `st.secrets` / env;
   template `.streamlit/secrets.toml.example`. README rewritten for the CV
   with screenshots in `docs/screenshots/`; live URL still to be added.
   Waiting for Anna: Anthropic API key (local test first), GitHub repo +
@@ -205,6 +205,14 @@ python -m pytest -v                        # run all tests
   `ai_calls` counter. `tests/conftest.py` autouse fixture `no_real_settings`
   hides `.streamlit/secrets.toml` / env from every test (no real key, no paid
   calls). 283 tests.
+- **Word memo export: COMPLETE.** The New
+  deal form's export is now "Download deal memo (Word)" (`reports/memo.py`
+  `Memo.docx`, via `python-docx==1.2.0`; football field drawn as PNG with
+  `pillow==12.3.0` built-in font, symbols like "×" mapped to plain text).
+  JSON download, "Save to data/user_deals/", `save_deal()`, `deal_filename()`
+  and the `DEALLENS_ALLOW_SAVE` setting were removed (Anna's request: a memo,
+  not a raw JSON file). Memo tab offers Word, HTML and Markdown. Tables use a
+  fixed full-width layout (Quick Look ignores it; Word respects it). 283 tests.
 
 ## Roadmap (agreed with Anna on 29 Sep 2026)
 Done: 1 transaction engine · 2 fully diluted shares + Activision · 3 Streamlit

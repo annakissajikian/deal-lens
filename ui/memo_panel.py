@@ -30,10 +30,12 @@ def render_memo(analysis: TransactionAnalysis, sources: dict, dcf: Optional[DCFA
     memo = st.session_state.get(memo_key)
     if memo is None or memo.title != f"{analysis.inputs.info.acquirer} / {analysis.inputs.info.target}":
         return
-    c1, c2, _ = st.columns([1, 1, 2])
-    c1.download_button("Download memo (HTML, print to PDF)", memo.html, file_name=f"{memo.filename_stem}.html",
+    c1, c2, c3, _ = st.columns([1, 1, 1, 1])
+    c1.download_button("Download memo (Word)", memo.docx, file_name=f"{memo.filename_stem}.docx",
+                       mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", type="primary", key=f"{key_prefix}_memo_docx")
+    c2.download_button("Download memo (HTML, print to PDF)", memo.html, file_name=f"{memo.filename_stem}.html",
                        mime="text/html", key=f"{key_prefix}_memo_html")
-    c2.download_button("Download memo (Markdown)", memo.markdown, file_name=f"{memo.filename_stem}.md",
+    c3.download_button("Download memo (Markdown)", memo.markdown, file_name=f"{memo.filename_stem}.md",
                        mime="text/markdown", key=f"{key_prefix}_memo_md")
     with st.container(border=True):
         st.markdown(md(memo.markdown))

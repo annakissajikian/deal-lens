@@ -17,7 +17,12 @@ from ai.payload import build_payload
 from finance.comps import analyse_valuation
 from finance.dcf import analyse_dcf
 from finance.transaction import analyse_transaction
-from reports.memo import build_memo
+from io import BytesIO
+
+from docx import Document
+from PIL import Image
+
+from reports.memo import build_memo, football_field_png
 from utils.formatting import format_value
 from utils.io import load_deal, load_sources
 
@@ -117,5 +122,45 @@ def test_memo_tab_generates_and_offers_downloads(isolated_deal_folders):
     next(b for b in at.button if b.label == "Generate Deal Memo").click().run()
     assert not at.exception
     tab = at.main.tabs[5]
-    assert len(tab.get("download_button")) == 2
+    assert [b.proto.label for b in tab.get("download_button")] == [
+        "Download memo (Word)", "Download memo (HTML, print to PDF)", "Download memo (Markdown)"]
     assert any("Preliminary deal memo: Microsoft Corporation" in m.value for m in tab.markdown)
+
+
+# -------------------------------------------------------------- Word (.docx) --
+
+def docx_text(memo) -> str:
+    """All text in the Word memo: paragraphs, then every table cell."""
+    doc = Document(BytesIO(memo.docx))
+    parts = [p.text for p in doc.paragraphs]
+    parts += [cell.text for table in doc.tables for row in table.rows for cell in row.cells]
+    return "\n".join(parts)
+
+
+def test_word_memo_opens_and_contains_the_key_figures(memo):
+    doc = Document(BytesIO(memo.docx))
+    text = docx_text(memo)
+    for figure in ("$95.00", "45.3%", "$68,824m", "20.39x", "795.76m", "$99.03", "$68.77 – $88.86", "DEFM14A",
+                   "Fact · derived", "Preliminary analytical tool for educational purposes. Not investment advice."):
+        assert figure in text, figure
+    headings = [p.text for p in doc.paragraphs if p.text[:2] in {f"{n}." for n in range(1, 10)}]
+    assert headings[:3] == ["1. Transaction summary", "2. Target financials (FY2021)", "3. Discounted cash flow"]
+    assert len(doc.inline_shapes) == 1                              # the football field picture
+    assert doc.core_properties.title == "Deal memo: Microsoft Corporation / Activision Blizzard, Inc."
+
+
+def test_word_memo_matches_the_markdown_memo(memo):
+    # Same sections, same figures: every number in the Word memo also appears in the Markdown memo
+    md_numbers = set(numbers_in(memo.markdown))
+    assert set(numbers_in(docx_text(memo))) <= md_numbers
+
+
+def test_football_field_png(activision):
+    valuation = activision[3]
+    image = Image.open(BytesIO(football_field_png(valuation, "USD")))
+    assert image.format == "PNG" and image.width == 2000 and image.height > 300
+
+
+def test_word_memo_without_valuation_has_no_picture():
+    m = build_memo(*engine(ILLUSTRATIVE), generated_on=DAY)
+    assert len(Document(BytesIO(m.docx)).inline_shapes) == 0

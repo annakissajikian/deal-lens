@@ -4,7 +4,6 @@ the app's Secrets on Streamlit Cloud) or environment variables. Never from code.
 
     ANTHROPIC_API_KEY          enables the AI analyst
     DEALLENS_AI_SESSION_LIMIT  AI analyses allowed per visitor session (default 3)
-    DEALLENS_ALLOW_SAVE        "false" hides "Save to data/user_deals/" (Streamlit Cloud's disk resets)
 """
 
 from __future__ import annotations
@@ -24,10 +23,6 @@ def setting(name: str) -> Optional[str]:
         value = None
     value = value if value not in (None, "") else os.environ.get(name)
     return None if value in (None, "") else str(value)
-
-
-def allow_save() -> bool:
-    return (setting("DEALLENS_ALLOW_SAVE") or "true").strip().lower() not in ("false", "0", "no")
 
 
 def ai_session_limit() -> int:

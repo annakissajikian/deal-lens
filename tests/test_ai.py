@@ -183,11 +183,10 @@ def test_app_without_api_key_says_unavailable(isolated_deal_folders, monkeypatch
 
 def test_settings_read_secrets_or_environment(monkeypatch):
     from ui import settings
-    monkeypatch.setattr(settings, "setting", lambda name: {"DEALLENS_ALLOW_SAVE": "false",
-                                                           "DEALLENS_AI_SESSION_LIMIT": "5"}.get(name))
-    assert settings.allow_save() is False and settings.ai_session_limit() == 5
+    monkeypatch.setattr(settings, "setting", lambda name: {"DEALLENS_AI_SESSION_LIMIT": "5"}.get(name))
+    assert settings.ai_session_limit() == 5
     monkeypatch.setattr(settings, "setting", lambda name: None)
-    assert settings.allow_save() is True and settings.ai_session_limit() == 3          # defaults
+    assert settings.ai_session_limit() == 3                                            # default
     monkeypatch.setattr(settings, "setting", lambda name: "lots")
     assert settings.ai_session_limit() == 3                                            # invalid -> default
 

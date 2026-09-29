@@ -1,3 +1,5 @@
 pytest>=8.0
 streamlit==1.64.0
 anthropic==1.9.0
+python-docx==1.2.0
+pillow==12.3.0

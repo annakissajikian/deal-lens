@@ -35,7 +35,7 @@ def no_real_settings(monkeypatch):
     """Tests never see the developer's .streamlit/secrets.toml or environment settings.
 
     Above all this keeps a real ANTHROPIC_API_KEY out of the tests, so no test can make a paid
-    API call; it also keeps local choices (e.g. DEALLENS_ALLOW_SAVE) from changing test results.
+    API call; it also keeps local choices (e.g. DEALLENS_AI_SESSION_LIMIT) from changing test results.
     Tests that need a setting patch it explicitly.
     """
     monkeypatch.setattr(ui.settings, "setting", lambda name: None)
