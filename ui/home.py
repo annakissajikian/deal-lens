@@ -95,8 +95,9 @@ def landing_html(stats: Optional[list[tuple[str, str]]], example_title: str = ""
   50% {{ transform: scale(1.025); filter: brightness(1.07); }} }}
 .dl-content {{ position: relative; z-index: 5; text-align: center; display: flex; flex-direction: column;
   align-items: center; }}
-.dl-headline {{ font-size: clamp(52px, 10vw, 96px); font-weight: 600; letter-spacing: -0.04em;
+.dl-headline {{ font-size: clamp(52px, 10vw, 96px); font-weight: 300; letter-spacing: -0.04em;
   line-height: 1.0; color: #fff; text-shadow: 0 2px 40px rgba(0,0,0,0.6); margin-bottom: 36px; }}
+.dl-headline strong {{ font-weight: 600; }}
 .dl-actions {{ display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }}
 .dl-primary {{ background: rgba(255,255,255,0.95); color: #08060E !important; font-weight: 600; font-size: 14px;
   padding: 13px 28px; border-radius: 50px; transition: opacity .2s; letter-spacing: -0.01em; }}
@@ -122,7 +123,7 @@ def landing_html(stats: Optional[list[tuple[str, str]]], example_title: str = ""
 <div class="dl-landing">
   <div class="dl-orb-wrap"><div class="dl-orb"></div></div>
   <div class="dl-content">
-    <h1 class="dl-headline">deals.</h1>
+    <h1 class="dl-headline">deal<strong>lens.</strong></h1>
     <div class="dl-actions">
       <a href="?go=new" target="_self" class="dl-primary">Analyse a deal</a>
       {example_link}

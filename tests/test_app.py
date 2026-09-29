@@ -58,7 +58,7 @@ def landing(at: AppTest) -> str:
 def test_app_opens_on_the_landing_page():
     at = AppTest.from_file(APP, default_timeout=30).run()
     page = landing(at)
-    assert '<h1 class="dl-headline">deals.</h1>' in page
+    assert '<h1 class="dl-headline">deal<strong>lens.</strong></h1>' in page
     assert 'href="?go=new" target="_self" class="dl-primary">Analyse a deal</a>' in page
     assert 'href="?go=example" target="_self" class="dl-ghost">Try an example' in page
     assert not at.sidebar.selectbox                                   # no deal shown by default

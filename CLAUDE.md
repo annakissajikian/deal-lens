@@ -184,7 +184,7 @@ python -m pytest -v                        # run all tests
 - **Step 8 — Visual polish + landing page: COMPLETE.** 274 tests. Sidebar
   sections Home / Example & saved deals / New deal (radio key `mode`; deal
   selectbox key `deal`); landing page `ui/home.py`. **Replaced (29 Sep 2026)
-  by Anna's dark "deals." landing design**, rendered with `st.html`; all CSS
+  by Anna's dark landing design** (headline "deal**lens.**": light "deal", bold "lens."), rendered with `st.html`; all CSS
   scoped under `.dl-landing` (never `html`/`body`/`:root`); links
   `?go=new` / `?go=example` handled in `app.py` before the sidebar is drawn,
   then `st.query_params.clear()`. The mock-up's stats (10.4× / 23.6% /
