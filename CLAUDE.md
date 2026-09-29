@@ -197,6 +197,15 @@ python -m pytest -v                        # run all tests
   with screenshots in `docs/screenshots/`; live URL still to be added.
   Waiting for Anna: Anthropic API key (local test first), GitHub repo +
   `git push`, Streamlit Cloud app + secrets.
+- **AI chat ("Ask a question about this deal"): COMPLETE
+  ** `ai/analyst.py`: `ask_question()` / `check_answer()` /
+  `chat_messages()`; one call per question with the same payload (system,
+  cached) + history of checked answers only; `ChatAnswer` structured output;
+  never raises (errors become a `ChatTurn.error`). `ui/ai_panel.py`:
+  `render_chat()` with `st.chat_input`; analyses and questions share the
+  `ai_calls` counter. `tests/conftest.py` autouse fixture `no_real_settings`
+  hides `.streamlit/secrets.toml` / env from every test (no real key, no paid
+  calls). 283 tests.
 
 ## Roadmap (agreed with Anna on 29 Sep 2026)
 Done: 1 transaction engine · 2 fully diluted shares + Activision · 3 Streamlit

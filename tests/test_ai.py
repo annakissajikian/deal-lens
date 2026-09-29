@@ -206,6 +206,103 @@ def test_ai_analyses_are_capped_per_session(isolated_deal_folders, monkeypatch):
     next(b for b in at.button if b.label == "Generate AI analysis").click().run()
     assert len(calls) == 1
     tab = at.main.tabs[4]
-    assert any("has used its 1 AI analyses" in i.value for i in tab.info)
+    assert any("has used its 1 AI requests" in i.value for i in tab.info)
     assert not [b for b in at.button if b.label == "Generate AI analysis"]    # no way past the cap
     assert any(m.value == "Microsoft is paying a full price." for m in tab.markdown)   # result still shown
+
+
+# -------------------------------------------------------------------- chat --
+
+from ai.analyst import ChatAnswer, ChatTurn, CheckedStatement, ask_question, chat_messages, check_answer
+
+
+def answer(*statements, unavailable=()):
+    return ChatAnswer(statements=list(statements), unavailable=list(unavailable))
+
+
+def test_chat_answer_is_checked_like_the_analysis(payload):
+    turn = check_answer("What is the EV?", answer(
+        s("The transaction EV is $68,824m.", "calculated", ["enterprise_value"]),
+        s("That is roughly $69bn.", "calculated", ["enterprise_value"]),
+        unavailable=["A DCF at a WACC of 9% has not been calculated by the engine.",
+                     "Acquirer financials are not in the payload."]), payload)
+    assert [x.text for x in turn.statements] == ["The transaction EV is $68,824m."]
+    assert turn.rejected == [("That is roughly $69bn.", "contains figure(s) not produced by the engine: 69")]
+    # a number from the question (9%) is not an engine figure either, so that line is dropped too
+    assert turn.unavailable == ["Acquirer financials are not in the payload."]
+
+
+def test_history_carries_only_checked_answers():
+    first = ChatTurn("What is the premium?",
+                     statements=[CheckedStatement("Answer", "The premium is 45.3%.", "calculated", ["premium"])],
+                     rejected=[("About 45%.", "contains figure(s) not produced by the engine: 45")],
+                     unavailable=["Acquirer share price"])
+    failed = ChatTurn("And the synergies?", error="Could not reach the Claude API.")
+    assert chat_messages([first, failed], "Is the offer full?") == [
+        {"role": "user", "content": "What is the premium?"},
+        {"role": "assistant", "content": "[calculated] The premium is 45.3%.\n[unavailable] Acquirer share price"},
+        {"role": "user", "content": "And the synergies?"},
+        {"role": "assistant", "content": "(No answer: Could not reach the Claude API.)"},
+        {"role": "user", "content": "Is the offer full?"}]           # rejected "About 45%" never goes back
+
+
+def test_ask_question_sends_payload_and_history(payload):
+    client = FakeClient(SimpleNamespace(stop_reason="end_turn", parsed_output=answer(
+        s("The offer is 4.1% below the DCF value.", "calculated", ["offer_vs_dcf"]))))
+    history = [ChatTurn("What is the EV?", statements=[
+        CheckedStatement("Answer", "The EV is $68,824m.", "calculated", ["enterprise_value"])])]
+    turn = ask_question(payload, history, "How does the offer compare with the DCF?", "key", client=client)
+    req = client.request
+    assert req["model"] == "claude-opus-5-5" and req["output_format"] is ChatAnswer
+    assert req["fallbacks"] == "default"
+    assert '"id": "enterprise_value"' in req["system"][1]["text"]                 # same tagged payload
+    assert req["system"][1]["cache_control"] == {"type": "ephemeral"}
+    assert [m["role"] for m in req["messages"]] == ["user", "assistant", "user"]
+    assert req["messages"][-1]["content"] == "How does the offer compare with the DCF?"
+    assert [x.text for x in turn.statements] == ["The offer is 4.1% below the DCF value."]
+
+
+def test_ask_question_never_raises(payload):
+    turn = ask_question(payload, [], "Hi", "key", client=FakeClient(
+        None, anthropic.APIConnectionError(request=httpx2.Request("POST", "https://api.anthropic.com"))))
+    assert turn.error.startswith("Could not reach") and not turn.statements
+
+
+def deal_ai_tab(monkeypatch, limit, calls):
+    """Activision's AI tab with a fake analyst and a fake chat (no API calls)."""
+    def fake_question(payload, history, question, key):
+        calls.append((question, [t.question for t in history]))
+        return check_answer(question, answer(s("The EV is $68,824m.", "calculated", ["enterprise_value"])), payload)
+    monkeypatch.setattr("ui.ai_panel.api_key", lambda: "test-key")
+    monkeypatch.setattr("ui.ai_panel.ask_question", fake_question)
+    monkeypatch.setattr("ui.ai_panel.ask_analyst", lambda payload, key: check_report(report(), payload))
+    monkeypatch.setattr("ui.ai_panel.ai_session_limit", lambda: limit)
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=30).run()
+    at.sidebar.radio(key="mode").set_value("Example & saved deals").run()
+    at.sidebar.selectbox[0].select("Example: Microsoft Corporation / Activision Blizzard, Inc.").run()
+    return at
+
+
+def test_chat_in_the_app(isolated_deal_folders, monkeypatch):
+    calls = []
+    at = deal_ai_tab(monkeypatch, 5, calls)
+    tab = at.main.tabs[4]
+    assert "Ask a question about this deal" in [h.value for h in tab.subheader]
+    at.chat_input[0].set_value("What is the EV?").run()
+    at.chat_input[0].set_value("And the premium?").run()
+    assert calls == [("What is the EV?", []), ("And the premium?", ["What is the EV?"])]   # history passed
+    tab = at.main.tabs[4]
+    assert [m.name for m in tab.chat_message] == ["user", "assistant", "user", "assistant"]
+    assert any(m.value == r"The EV is \$68,824m." for m in tab.markdown)   # "$" escaped for markdown
+    assert any("AI requests used this session (analyses and questions): 2 of 5" in c.value for c in tab.caption)
+
+
+def test_questions_count_toward_the_session_limit(isolated_deal_folders, monkeypatch):
+    calls = []
+    at = deal_ai_tab(monkeypatch, 2, calls)
+    next(b for b in at.button if b.label == "Generate AI analysis").click().run()     # request 1
+    at.chat_input[0].set_value("What is the EV?").run()                              # request 2
+    assert len(calls) == 1
+    assert at.chat_input[0].disabled                                                  # no request 3
+    assert not [b for b in at.button if b.label == "Generate AI analysis"]
+    assert any("has used its 2 AI requests" in i.value for i in at.main.tabs[4].info)

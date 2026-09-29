@@ -21,6 +21,8 @@ every figure calculated in Python and traced to its source.**
 - **AI analyst** (Claude): interprets the engine's outputs, never calculates;
   every sentence is tagged fact / assumption / calculated / AI interpretation,
   and a **number checker** removes any figure the engine did not produce.
+  Includes a chat box: *Ask a question about this deal*, answered under the
+  same rules (anything not calculated is reported as unavailable).
 - **Deal memo**: one click, downloadable as HTML (prints to PDF) or Markdown.
 - **New deal form** with validation shown next to each field, plus JSON
   download, so any deal can be analysed.
@@ -269,9 +271,18 @@ shown, every statement is checked: any number not in the payload (rounded,
 converted or invented), an unknown item id, or a tag that does not match the
 cited items gets the statement removed, and the reason is listed.
 
+**Ask a question about this deal**: a chat box in the same tab. Each question
+is one Claude call with the same tagged payload plus the conversation so far;
+the answer comes back as tagged statements and goes through the same checks.
+Only statements that passed are kept in the history, so a removed figure never
+returns in later turns. Questions that need something the engine has not
+calculated (a different WACC, offer price, synergy case) are answered as
+unavailable, never estimated. Every analysis and every question counts toward
+the per-session limit (`DEALLENS_AI_SESSION_LIMIT`, default 3).
+
 Set-up: put `ANTHROPIC_API_KEY = "sk-ant-..."` in `.streamlit/secrets.toml`
 (gitignored). Without a key the tab says the analyst is unavailable; all
-other tabs work.
+other tabs work. Tests never read the secrets file or make API calls.
 
 ## Deal memo
 

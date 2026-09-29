@@ -11,7 +11,7 @@ from typing import Optional
 
 import streamlit as st
 
-from ai.analyst import AnalystUnavailable, CheckedReport, ask_analyst
+from ai.analyst import AnalystUnavailable, ChatTurn, CheckedReport, ask_analyst, ask_question
 from ai.payload import build_payload
 from finance.comps import ValuationAnalysis
 from finance.dcf import DCFAnalysis
@@ -31,9 +31,9 @@ def api_key() -> Optional[str]:
 
 def render_ai(analysis: TransactionAnalysis, sources: dict, dcf: Optional[DCFAnalysis],
               valuation: Optional[ValuationAnalysis], key_prefix: str) -> None:
-    st.caption("Claude reads the engine's outputs (and nothing else) and writes a short interpretation. "
-               "It never calculates: every figure it writes is checked against the engine, and any "
-               "sentence with a figure the engine did not produce is removed.")
+    st.caption("Claude reads the engine's outputs (and nothing else) and writes a short interpretation, "
+               "then answers your questions. It never calculates: every figure it writes is checked against "
+               "the engine, and any sentence with a figure the engine did not produce is removed.")
     key = api_key()
     if not key:
         st.info("AI analyst unavailable: no API key configured. Add ANTHROPIC_API_KEY to "
@@ -44,24 +44,75 @@ def render_ai(analysis: TransactionAnalysis, sources: dict, dcf: Optional[DCFAna
     payload = build_payload(analysis, sources, dcf, valuation)
     state_key = _state_key(payload, key_prefix)
     limit = ai_session_limit()
-    if st.session_state.get("ai_calls", 0) < limit:
+    if _requests_left(limit):
         if st.button("Generate AI analysis", type="primary", key=f"{key_prefix}_ai_button"):
-            st.session_state.ai_calls = st.session_state.get("ai_calls", 0) + 1
+            _count_request()
             with st.spinner("Claude is reviewing the engine outputs..."):
                 try:
                     st.session_state[state_key] = ask_analyst(payload, key)
                 except AnalystUnavailable as exc:
                     st.session_state[state_key] = str(exc)
             st.rerun()                        # redraw with the new count (hides the button at the cap)
-        st.caption(f"AI analyses used this session: {st.session_state.get('ai_calls', 0)} of {limit}.")
+        st.caption(f"AI requests used this session (analyses and questions): "
+                   f"{st.session_state.get('ai_calls', 0)} of {limit}.")
     else:                                     # cap reached: no more calls, earlier results still shown
-        st.info(f"This session has used its {limit} AI analyses (a cap that keeps the public demo's API costs "
-                f"bounded). Reload the page to start a new session.")
+        st.info(f"This session has used its {limit} AI requests (analyses and questions; a cap that keeps the "
+                f"public demo's API costs bounded). Reload the page to start a new session.")
     result = st.session_state.get(state_key)
     if isinstance(result, str):
         st.error(result)
     elif isinstance(result, CheckedReport):
         render_report(result)
+    render_chat(payload, key, f"{state_key}_chat", limit)
+
+
+def _requests_left(limit: int) -> bool:
+    return st.session_state.get("ai_calls", 0) < limit
+
+
+def _count_request() -> None:
+    """Every Claude call (an analysis or a question) counts toward the per-session limit."""
+    st.session_state.ai_calls = st.session_state.get("ai_calls", 0) + 1
+
+
+def render_chat(payload: dict, key: str, chat_key: str, limit: int) -> None:
+    """Questions about this deal, answered from the same payload and checked like the analysis."""
+    st.subheader("Ask a question about this deal")
+    st.caption("Answers use only the engine's outputs. Anything the engine has not calculated (for example a "
+               "different WACC or offer price) is reported as unavailable rather than estimated.")
+    history: list[ChatTurn] = st.session_state.setdefault(chat_key, [])
+    for turn in history:
+        with st.chat_message("user"):
+            st.markdown(md(turn.question))
+        with st.chat_message("assistant"):
+            render_answer(turn)
+    left = _requests_left(limit)
+    question = st.chat_input("Ask a question about this deal" if left else "AI request limit reached for this session",
+                             key=f"{chat_key}_input", disabled=not left)
+    if question and left:
+        _count_request()
+        with st.spinner("Claude is answering from the engine outputs..."):
+            history.append(ask_question(payload, list(history), question.strip(), key))
+        st.rerun()
+
+
+def render_answer(turn: ChatTurn) -> None:
+    if turn.error:
+        st.error(turn.error)
+        return
+    for s in turn.statements:
+        _statement(s.text, s.kind)
+    for u in turn.unavailable:
+        c1, c2 = st.columns([1, 6], vertical_alignment="center")
+        with c1:
+            st.badge("Unavailable", color="gray")
+        c2.markdown(md(u))
+    if not turn.statements and not turn.unavailable:
+        st.caption("No statement in this answer passed the number checker.")
+    if turn.rejected:
+        with st.expander(f"{len(turn.rejected)} statement(s) removed by the number checker"):
+            for text, reason in turn.rejected:
+                st.markdown(md(f"- ~~{text}~~  \n  *Reason: {reason}*"))
 
 
 def _state_key(payload: dict, key_prefix: str) -> str:

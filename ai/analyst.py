@@ -4,7 +4,8 @@ AI analyst (Step 6): Claude interprets the engine's outputs; it never calculates
 Flow:
   1. build_payload() -> the only data the model sees (ai/payload.py)
   2. ask_analyst()   -> one Claude API call with a structured output (AnalystReport)
-  3. check_report()  -> every statement is verified before it is shown:
+  3. check_report()  -> every statement is verified before it is shown (chat answers too,
+                        via ask_question() / check_answer()):
        * every number must appear in the payload (ai/number_checker.py)
        * cited item ids must exist
        * a "fact" statement may only cite facts, a "calculated" one only
@@ -129,18 +130,15 @@ def check_report(report: AnalystReport, payload: dict) -> CheckedReport:
 
 # -------------------------------------------------------------------- call --
 
-def ask_analyst(payload: dict, api_key: str, client=None) -> CheckedReport:
-    """One structured Claude call, then the checks. Raises AnalystUnavailable with a readable reason."""
-    client = client or anthropic.Anthropic(api_key=api_key)
+def _parse(client, **request):
+    """One structured Claude call; API failures become AnalystUnavailable with a readable reason."""
     try:
         response = client.beta.messages.parse(
             model=MODEL,
             max_tokens=16000,
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",                  # on a safety decline, the API retries on a fallback model
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": "Deal payload:\n" + json.dumps(payload, ensure_ascii=False)}],
-            output_format=AnalystReport,
+            **request,
         )
     except anthropic.AuthenticationError:
         raise AnalystUnavailable("The API key was rejected. Check ANTHROPIC_API_KEY in .streamlit/secrets.toml.")
@@ -151,7 +149,93 @@ def ask_analyst(payload: dict, api_key: str, client=None) -> CheckedReport:
     except anthropic.APIConnectionError:
         raise AnalystUnavailable("Could not reach the Claude API. Check the internet connection.")
     if response.stop_reason == "refusal":
-        raise AnalystUnavailable("The model declined to analyse this deal.")
+        raise AnalystUnavailable("The model declined to answer.")
     if response.stop_reason == "max_tokens" or response.parsed_output is None:
-        raise AnalystUnavailable("The analysis was incomplete. Try again.")
-    return check_report(response.parsed_output, payload)
+        raise AnalystUnavailable("The answer was incomplete. Try again.")
+    return response.parsed_output
+
+
+def ask_analyst(payload: dict, api_key: str, client=None) -> CheckedReport:
+    """One structured Claude call, then the checks. Raises AnalystUnavailable with a readable reason."""
+    report = _parse(client or anthropic.Anthropic(api_key=api_key),
+                    system=SYSTEM_PROMPT,
+                    messages=[{"role": "user", "content": "Deal payload:\n" + json.dumps(payload, ensure_ascii=False)}],
+                    output_format=AnalystReport)
+    return check_report(report, payload)
+
+
+# -------------------------------------------------------------------- chat --
+
+CHAT_SYSTEM_PROMPT = """You answer questions from a banking team about one M&A transaction.
+The deal payload below was produced by a deterministic Python valuation engine. Answer only from it.
+
+Rules:
+- Every number you write must be copied exactly as it appears in an item's "display" value (same
+  rounding and units). Never calculate, round, convert (no "bn"), estimate or project a figure, and
+  never repeat a number from the question that is not in the payload.
+- If the question needs a figure, scenario or data the engine did not produce (for example a
+  different WACC, offer price or synergy case), do not compute it: say it is unavailable because the
+  engine has not calculated it, and add it to "unavailable". Suggest where it could come from if useful
+  (for example: change the input in the New deal form and re-run the engine).
+- Answer in one to four short statements. Tag each: fact (reported input), assumption, calculated
+  (engine output) or interpretation (your judgement), and cite the payload item ids it relies on.
+- Previous answers in the conversation were checked; stay consistent with them.
+- This is not investment advice.
+"""
+
+
+class ChatAnswer(BaseModel):
+    statements: list[Statement] = Field(description="One to four statements answering the question.")
+    unavailable: list[str] = Field(description="Data needed for the question that is not in the payload.")
+
+
+@dataclass
+class ChatTurn:
+    question: str
+    statements: list[CheckedStatement] = field(default_factory=list)
+    rejected: list[tuple[str, str]] = field(default_factory=list)
+    unavailable: list[str] = field(default_factory=list)
+    error: str = ""                                 # set when the call failed (shown instead of an answer)
+
+    def answer_text(self) -> str:
+        """What the model said, as it goes back into the history: only statements that passed the checks."""
+        if self.error:
+            return f"(No answer: {self.error})"
+        lines = [f"[{s.kind}] {s.text}" for s in self.statements]
+        lines += [f"[unavailable] {u}" for u in self.unavailable]
+        return "\n".join(lines) or "(No statement passed the number checker.)"
+
+
+def check_answer(question: str, answer: ChatAnswer, payload: dict) -> ChatTurn:
+    allowed = allowed_numbers(payload)
+    turn = ChatTurn(question, unavailable=[u for u in answer.unavailable if not unsupported_numbers(u, allowed)])
+    for s in answer.statements:
+        reason = check_statement(s, payload, allowed)
+        if reason:
+            turn.rejected.append((s.text, reason))
+        else:
+            turn.statements.append(CheckedStatement("Answer", s.text, s.kind, s.item_ids))
+    return turn
+
+
+def chat_messages(history: list[ChatTurn], question: str) -> list[dict]:
+    """Earlier questions and their checked answers, then the new question (append-only history)."""
+    messages: list[dict] = []
+    for turn in history:
+        messages += [{"role": "user", "content": turn.question},
+                     {"role": "assistant", "content": turn.answer_text()}]
+    return messages + [{"role": "user", "content": question}]
+
+
+def ask_question(payload: dict, history: list[ChatTurn], question: str, api_key: str, client=None) -> ChatTurn:
+    """Answer one question about the deal; the answer is checked like the analysis. Never raises."""
+    try:
+        answer = _parse(client or anthropic.Anthropic(api_key=api_key),
+                        system=[{"type": "text", "text": CHAT_SYSTEM_PROMPT},
+                                {"type": "text", "text": "Deal payload:\n" + json.dumps(payload, ensure_ascii=False),
+                                 "cache_control": {"type": "ephemeral"}}],     # same payload every question
+                        messages=chat_messages(history, question),
+                        output_format=ChatAnswer)
+    except AnalystUnavailable as exc:
+        return ChatTurn(question, error=str(exc))
+    return check_answer(question, answer, payload)
