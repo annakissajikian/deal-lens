@@ -1,11 +1,12 @@
 """
-DealLens web app (Steps 3 and 3b).
+DealLens web app.
 
     streamlit run app.py
 
-Two modes, chosen in the sidebar:
-  * Analyse a saved deal: any file in data/sample_deals/ or data/user_deals/
-  * Enter a new deal: the input form in ui/deal_form.py
+Three sections, chosen in the sidebar:
+  * Home: landing page (ui/home.py)
+  * Example & saved deals: data/sample_deals/ ("Example: ...") and data/user_deals/ ("Saved: ...")
+  * New deal: the input form in ui/deal_form.py
 
 The app only displays results: every number comes from analyse_transaction()
 in finance/. Nothing is calculated here.
@@ -21,6 +22,7 @@ from ui.ai_panel import render_ai
 from ui.dcf import render_dcf
 from ui.deal_form import render_deal_form
 from ui.financials import render_financials
+from ui.home import ASSETS, render_home
 from ui.memo_panel import render_memo
 from ui.overview import render_overview
 from ui.valuation import render_valuation
@@ -28,17 +30,29 @@ from utils.formatting import md
 from utils.io import USER_DEALS_DIR, list_sample_deals, load_deal, load_sources
 
 DISCLAIMER = "Preliminary analytical tool for educational purposes. Not investment advice."
-MODES = ("Analyse a saved deal", "Enter a new deal")
+MODES = ("Home", "Example & saved deals", "New deal")
+EXAMPLE_FILE = "microsoft_activision.json"
 
-st.set_page_config(page_title="DealLens", layout="wide")
+st.set_page_config(page_title="DealLens", page_icon=":material/query_stats:", layout="wide")
+st.logo(str(ASSETS / "logo_wordmark.svg"), icon_image=str(ASSETS / "logo_mark.svg"), size="large")
 
-deals = list_sample_deals() | {f"Saved: {label}": path
-                               for label, path in list_sample_deals(USER_DEALS_DIR).items()}
+deals = {f"Example: {label}": path for label, path in list_sample_deals().items()} | \
+        {f"Saved: {label}": path for label, path in list_sample_deals(USER_DEALS_DIR).items()}
+example = next((label for label, path in deals.items() if path.name == EXAMPLE_FILE), None)
+
+
+def go_new_deal() -> None:
+    st.session_state.mode = MODES[2]
+
+
+def go_example() -> None:
+    st.session_state.mode, st.session_state.deal = MODES[1], example
+
+
 with st.sidebar:
-    st.markdown("## DealLens")
     st.caption("Preliminary M&A analysis")
-    mode = st.radio("Mode", MODES, key="mode")
-    label = st.selectbox("Deal", list(deals)) if mode == MODES[0] and deals else None
+    mode = st.radio("Section", MODES, key="mode")
+    label = st.selectbox("Deal", list(deals), key="deal") if mode == MODES[1] and deals else None
     st.divider()
     st.caption(DISCLAIMER)
 
@@ -74,7 +88,9 @@ def show_saved_deal(label: str) -> None:
         render_memo(analysis, sources, dcf, valuation, key_prefix="saved")
 
 
-if mode == MODES[1]:
+if mode == MODES[0]:
+    render_home(go_new_deal, go_example if example else None)
+elif mode == MODES[2]:
     render_deal_form(deals)
 elif label is None:
     st.error("No deal files found in data/sample_deals/ or data/user_deals/.")

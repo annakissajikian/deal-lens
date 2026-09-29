@@ -112,7 +112,8 @@ def test_football_field_uses_the_deal_currency(activision):
 
 def test_memo_tab_generates_and_offers_downloads(isolated_deal_folders):
     at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=30).run()
-    at.sidebar.selectbox[0].select("Microsoft Corporation / Activision Blizzard, Inc.").run()
+    at.sidebar.radio(key="mode").set_value("Example & saved deals").run()
+    at.sidebar.selectbox[0].select("Example: Microsoft Corporation / Activision Blizzard, Inc.").run()
     next(b for b in at.button if b.label == "Generate Deal Memo").click().run()
     assert not at.exception
     tab = at.main.tabs[5]

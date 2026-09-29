@@ -25,7 +25,7 @@ SAMPLES = [ROOT / "tests" / "fixtures" / "illustrative_deal.json",
            ROOT / "data" / "sample_deals" / "microsoft_activision.json"]
 pytestmark = pytest.mark.usefixtures("isolated_deal_folders")
 APP = str(ROOT / "app.py")
-ILLUSTRATIVE = "Northwind Holdings / Apex Components"
+ILLUSTRATIVE = "Example: Northwind Holdings / Apex Components"
 
 
 def raw(path: Path) -> dict:
@@ -146,7 +146,7 @@ def test_saved_file_reloads_to_the_same_analysis(tmp_path):
 
 def new_deal_app(start_from: str | None = ILLUSTRATIVE) -> AppTest:
     at = AppTest.from_file(APP, default_timeout=30).run()
-    at.sidebar.radio(key="mode").set_value("Enter a new deal").run()
+    at.sidebar.radio(key="mode").set_value("New deal").run()
     if start_from:
         at.selectbox(key="f_start").select(start_from).run()
     assert not at.exception, at.exception
@@ -198,8 +198,8 @@ def test_results_hidden_when_inputs_change_after_a_run():
 def test_values_survive_switching_modes():
     at = new_deal_app()
     at.number_input(key="f_offer_price_per_share").set_value(66.0).run()
-    at.sidebar.radio(key="mode").set_value("Analyse a saved deal").run()
-    at.sidebar.radio(key="mode").set_value("Enter a new deal").run()
+    at.sidebar.radio(key="mode").set_value("Example & saved deals").run()
+    at.sidebar.radio(key="mode").set_value("New deal").run()
     assert at.number_input(key="f_offer_price_per_share").value == 66.0
 
 
@@ -276,6 +276,6 @@ def test_orphan_peers_are_reported():
 
 
 def test_form_valuation_tab_for_activision():
-    at = new_deal_app("Microsoft Corporation / Activision Blizzard, Inc.")
+    at = new_deal_app("Example: Microsoft Corporation / Activision Blizzard, Inc.")
     click(at, "Run analysis")
     assert len(at.main.tabs[4].get("vega_lite_chart")) == 1                     # football field

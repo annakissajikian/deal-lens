@@ -181,7 +181,15 @@ python -m pytest -v                        # run all tests
   from templates filled with engine figures; optional AI section only from a
   `CheckedReport`. Memo tab with "Generate Deal Memo" + two downloads. A test
   runs the number checker over the whole memo.
-- **Step 8 — Visual polish + landing page: NEXT.**
+- **Step 8 — Visual polish + landing page: COMPLETE.** 274 tests. Sidebar
+  sections Home / Example & saved deals / New deal (radio key `mode`; deal
+  selectbox key `deal`); landing page `ui/home.py` with "Analyse a deal" and
+  "Try the example" (callbacks set `mode`/`deal`); `assets/logo_mark.svg` +
+  `logo_wordmark.svg` via `st.logo`; brand navy `#1F3A5F`, accent `#2A78D6`.
+  Sample deals are labelled "Example: …", user deals "Saved: …". App tests
+  must switch `mode` first (the landing page is the default view).
+- **Step 9 — Deploy to Streamlit Community Cloud: NEXT** (needs Anna's GitHub
+  + Streamlit accounts and, for the AI analyst, an Anthropic API key).
 
 ## Roadmap (agreed with Anna on 29 Sep 2026)
 Done: 1 transaction engine · 2 fully diluted shares + Activision · 3 Streamlit
@@ -214,10 +222,10 @@ deal-lens/
 ├── utils/          # io (JSON loading), formatting
 ├── data/sample_deals/
 ├── tests/
-├── ai/             # later: analyst, prompts, number checker
-├── extraction/     # later: PDF parsing with citations
+├── ai/             # AI analyst: payload, number checker, Claude call
+├── extraction/     # future work: PDF parsing with citations
 ├── reports/        # deal memo
-└── ui/ + app.py    # later: Streamlit
+└── ui/ + app.py    # Streamlit app (display only)
 ```
 
 ## Disclaimer to keep in the UI and README

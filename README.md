@@ -24,6 +24,8 @@ checker removes any sentence with a figure the engine did not produce
 (AI analyst tab).
 **Step 7 — Deal memo.** One click builds a preliminary deal memo from the
 engine outputs, downloadable as HTML (prints to PDF) or Markdown (Memo tab).
+**Step 8 — Landing page and brand.** The app opens on a landing page with
+*Analyse a deal* and a one-click Microsoft / Activision example.
 
 ## Quick start
 
@@ -43,6 +45,7 @@ python -m pytest -v                # run the tests
 ```
 deal-lens/
 ├── app.py                       # Streamlit web app (display only, no calculations)
+├── assets/                      # logo (SVG)
 ├── run_analysis.py              # command-line demo
 ├── ui/
 │   ├── ai_panel.py              # AI analyst tab
@@ -51,6 +54,7 @@ deal-lens/
 │   ├── overview.py              # Deal Overview tab: headline tiles, deal terms, warnings
 │   ├── valuation.py             # Valuation tab: football field, comps and precedents
 │   ├── financials.py            # Financials tab: tagged tables and sources
+│   ├── home.py                  # landing page
 │   └── memo_panel.py            # Memo tab: generate + download
 ├── .streamlit/config.toml       # app theme
 ├── finance/                     # deterministic engine, no AI

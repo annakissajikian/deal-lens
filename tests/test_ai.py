@@ -174,5 +174,6 @@ def test_app_without_api_key_says_unavailable(isolated_deal_folders, monkeypatch
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setattr("ui.ai_panel.api_key", lambda: None)
     at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=30).run()
-    at.sidebar.selectbox[0].select("Microsoft Corporation / Activision Blizzard, Inc.").run()
+    at.sidebar.radio(key="mode").set_value("Example & saved deals").run()
+    at.sidebar.selectbox[0].select("Example: Microsoft Corporation / Activision Blizzard, Inc.").run()
     assert at.main.tabs[4].info[0].value.startswith("AI analyst unavailable: no API key configured.")

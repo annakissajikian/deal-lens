@@ -19,13 +19,14 @@ from utils.io import load_deal, load_sources
 APP = str(Path(__file__).parent.parent / "app.py")
 pytestmark = pytest.mark.usefixtures("isolated_deal_folders")   # the illustrative fixture + Activision
 ACTIVISION_FILE = Path(__file__).parent.parent / "data" / "sample_deals" / "microsoft_activision.json"
-ILLUSTRATIVE = "Northwind Holdings / Apex Components"
-ACTIVISION = "Microsoft Corporation / Activision Blizzard, Inc."
+ILLUSTRATIVE = "Example: Northwind Holdings / Apex Components"
+ACTIVISION = "Example: Microsoft Corporation / Activision Blizzard, Inc."
 DISCLAIMER = "Preliminary analytical tool for educational purposes. Not investment advice."
 
 
 def run_app(deal: str) -> AppTest:
     at = AppTest.from_file(APP, default_timeout=30).run()
+    at.sidebar.radio(key="mode").set_value("Example & saved deals").run()
     at.sidebar.selectbox[0].select(deal).run()
     assert not at.exception, at.exception
     return at
@@ -46,7 +47,29 @@ def table_with(at: AppTest, column: str, value: str):
 
 def test_dropdown_lists_both_sample_deals():
     at = AppTest.from_file(APP, default_timeout=30).run()
+    at.sidebar.radio(key="mode").set_value("Example & saved deals").run()
     assert at.sidebar.selectbox[0].options == [ILLUSTRATIVE, ACTIVISION]
+
+
+def test_app_opens_on_the_landing_page():
+    at = AppTest.from_file(APP, default_timeout=30).run()
+    assert at.title[0].value == "DealLens"
+    labels = [b.label for b in at.button]
+    assert "Analyse a deal" in labels and "Try the example: Microsoft / Activision" in labels
+    assert not at.sidebar.selectbox                                   # no deal shown by default
+
+
+def test_example_button_opens_activision_in_one_click():
+    at = AppTest.from_file(APP, default_timeout=30).run()
+    next(b for b in at.button if b.label.startswith("Try the example")).click().run()
+    assert at.sidebar.radio(key="mode").value == "Example & saved deals"
+    assert at.title[0].value == "Microsoft Corporation / Activision Blizzard, Inc."
+
+
+def test_analyse_a_deal_button_opens_the_form():
+    at = AppTest.from_file(APP, default_timeout=30).run()
+    next(b for b in at.button if b.label == "Analyse a deal").click().run()
+    assert at.title[0].value == "New deal"
 
 
 @pytest.mark.parametrize("deal", [ILLUSTRATIVE, ACTIVISION])
