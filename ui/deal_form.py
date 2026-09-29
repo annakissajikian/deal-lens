@@ -28,7 +28,7 @@ from ui.overview import render_overview
 from ui.valuation import render_valuation
 from utils.formatting import SYMBOLS, md
 from reports.memo import build_memo
-from utils.io import deal_from_dict
+from utils.io import deal_from_dict, save_deal
 
 PERCENT_FIELDS = ("revenue_synergy_incremental_margin", "financing_cash", "financing_debt",
                   "financing_stock", "tax_rate")
@@ -250,6 +250,7 @@ def _start_from(deals: dict) -> None:
 
 def _run() -> None:
     raw = build_deal_dict(_values())
+    st.session_state.f_save_msg = None
     try:
         deal = deal_from_dict(raw)
         dcf = analyse_dcf(deal)
@@ -257,6 +258,16 @@ def _run() -> None:
         st.session_state.f_errors = []
     except DealInputError as exc:
         st.session_state.f_result, st.session_state.f_errors = None, exc.errors
+        return
+    # A valid deal is saved so it appears in the sidebar as "Saved: Acquirer / Target".
+    # Re-running the same deal updates its file.
+    try:
+        path = save_deal(raw, overwrite=True)
+        st.session_state.f_save_msg = ("success", f"Saved to data/user_deals/{path.name}: it is listed in the "
+                                                  f"sidebar under Example & saved deals.")
+    except OSError as exc:                    # e.g. a read-only disk: the analysis still works
+        st.session_state.f_save_msg = ("warning", f"The deal could not be saved ({exc.strerror or exc}); "
+                                                  f"the analysis and memo download still work.")
 
 
 def _group_errors(group: str) -> None:
@@ -267,7 +278,7 @@ def _group_errors(group: str) -> None:
 def render_deal_form(deals: dict) -> None:
     if "f_saved" not in st.session_state:
         _load(BLANK)
-        st.session_state.update(f_errors=[], f_result=None)
+        st.session_state.update(f_errors=[], f_result=None, f_save_msg=None)
     for k, val in st.session_state.f_saved.items():            # restore values Streamlit dropped
         if k not in TABLES and f"f_{k}" not in st.session_state:
             st.session_state[f"f_{k}"] = val
@@ -432,3 +443,6 @@ def _render_export(result: tuple) -> None:
                "football field, warnings and limitations" + (", and your AI analyst view." if ai else ". "
                "Generate the AI analysis first to include the AI analyst view.") +
                " Word can save it as PDF. More formats in the Memo tab.")
+    msg = st.session_state.get("f_save_msg")
+    if msg:
+        (st.success if msg[0] == "success" else st.warning)(msg[1])

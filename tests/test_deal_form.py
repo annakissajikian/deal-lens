@@ -18,7 +18,7 @@ from streamlit.testing.v1 import AppTest
 from finance.transaction import analyse_transaction
 from ui.deal_form import (BLANK, SHARE_MODES, build_deal_dict, errors_by_group, form_values_from_dict,
                           orphan_peers, percent_list)
-from utils.io import deal_from_dict, load_deal
+from utils.io import deal_filename, deal_from_dict, load_deal, save_deal
 
 ROOT = Path(__file__).parent.parent
 SAMPLES = [ROOT / "tests" / "fixtures" / "illustrative_deal.json",
@@ -254,3 +254,78 @@ def test_export_offers_a_word_memo_not_json():
     assert buttons[0].proto.label == "Download deal memo (Word)"
     assert not [b for b in at.button if b.label.startswith("Save to")]
     assert any("Word can save it as PDF" in c.value for c in at.caption)
+
+
+# ------------------------------------------------ saving to data/user_deals --
+
+def test_deal_filename_is_safe():
+    assert deal_filename({"deal": {"acquirer": "Microsoft Corp.", "target": "Activision Blizzard, Inc."}}) \
+        == "microsoft_corp_activision_blizzard_inc.json"
+    assert deal_filename({"deal": {"acquirer": "../../etc", "target": ""}}) == "etc.json"
+    assert deal_filename({}) == "deal.json"
+
+
+def test_save_refuses_to_overwrite_unless_asked(tmp_path):
+    d = raw(SAMPLES[0])
+    path = save_deal(d, tmp_path / "user_deals")                 # folder created
+    assert path.name == "northwind_holdings_apex_components.json"
+    with pytest.raises(FileExistsError):
+        save_deal(d, tmp_path / "user_deals")
+    save_deal(d, tmp_path / "user_deals", overwrite=True)
+
+
+def test_saved_file_reloads_to_the_same_analysis(tmp_path):
+    d = build_deal_dict(form_values_from_dict(raw(SAMPLES[0])))
+    reloaded = analyse_transaction(load_deal(save_deal(d, tmp_path)))
+    direct = analyse_transaction(deal_from_dict(d))
+    assert {k: m.value for k, m in reloaded.metrics.items()} == {k: m.value for k, m in direct.metrics.items()}
+
+
+SAVED = "Saved: Northwind Holdings / Apex Components"
+
+
+def test_run_saves_the_deal_and_still_offers_the_word_memo(isolated_deal_folders):
+    at = new_deal_app()
+    at.number_input(key="f_offer_price_per_share").set_value(66.0).run()
+    click(at, "Run analysis")
+    # (1) saved as JSON in data/user_deals/ ...
+    saved = isolated_deal_folders / "northwind_holdings_apex_components.json"
+    assert saved.exists()
+    assert json.loads(saved.read_text())["facts"]["offer_price_per_share"] == 66.0
+    assert any(x.value.startswith("Saved to data/user_deals/northwind_holdings_apex_components.json")
+               for x in at.success)
+    # (2) ... and the Word memo is still offered
+    assert [b.proto.label for b in at.get("download_button")] == ["Download deal memo (Word)"]
+    # the saved deal is listed in the sidebar and reloads to the same analysis
+    at.sidebar.radio(key="mode").set_value("Example & saved deals").run()
+    assert SAVED in at.sidebar.selectbox[0].options
+    at.sidebar.selectbox[0].select(SAVED).run()
+    assert {m.label: m.value for m in at.main.tabs[0].metric}["Acquisition premium"] == "32.0%"   # 66 / 50 − 1
+
+
+def test_rerun_updates_the_saved_file(isolated_deal_folders):
+    at = new_deal_app()
+    click(at, "Run analysis")
+    at.number_input(key="f_offer_price_per_share").set_value(70.0).run()
+    click(at, "Run analysis")
+    saved = isolated_deal_folders / "northwind_holdings_apex_components.json"
+    assert json.loads(saved.read_text())["facts"]["offer_price_per_share"] == 70.0
+    assert len(list(isolated_deal_folders.glob("*.json"))) == 1
+
+
+def test_invalid_deal_is_not_saved(isolated_deal_folders):
+    at = new_deal_app()
+    at.number_input(key="f_tax_rate").set_value(250.0).run()
+    click(at, "Run analysis")
+    assert not isolated_deal_folders.exists() or not list(isolated_deal_folders.glob("*.json"))
+
+
+def test_save_failure_does_not_block_the_memo(monkeypatch):
+    def read_only(raw, overwrite):
+        raise PermissionError(13, "Permission denied")
+    monkeypatch.setattr("ui.deal_form.save_deal", read_only)
+    at = new_deal_app()
+    click(at, "Run analysis")
+    assert any("could not be saved (Permission denied)" in w.value for w in at.warning)
+    assert [b.proto.label for b in at.get("download_button")] == ["Download deal memo (Word)"]
+    assert at.metric                                                                  # results still shown

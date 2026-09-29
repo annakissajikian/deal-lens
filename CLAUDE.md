@@ -209,9 +209,14 @@ python -m pytest -v                        # run all tests
   deal form's export is now "Download deal memo (Word)" (`reports/memo.py`
   `Memo.docx`, via `python-docx==1.2.0`; football field drawn as PNG with
   `pillow==12.3.0` built-in font, symbols like "×" mapped to plain text).
-  JSON download, "Save to data/user_deals/", `save_deal()`, `deal_filename()`
-  and the `DEALLENS_ALLOW_SAVE` setting were removed (Anna's request: a memo,
-  not a raw JSON file). Memo tab offers Word, HTML and Markdown. Tables use a
+  JSON download, the Save button and the `DEALLENS_ALLOW_SAVE` setting were
+  removed. **Fix (Anna, 29 Sep 2026): saving restored** — every valid *Run
+  analysis* saves the deal via `utils/io.save_deal(raw, overwrite=True)` to
+  `data/user_deals/` (sidebar "Saved: …"); the Word download is shown too.
+  Both must stay. A save failure (OSError) is a warning, never blocks the memo.
+  Open issue for deployment: on Streamlit Cloud all visitors share one disk,
+  so a visitor's saved deal would appear in every visitor's sidebar (and be
+  lost on restart) — Anna to decide before deploying. Memo tab offers Word, HTML and Markdown. Tables use a
   fixed full-width layout (Quick Look ignores it; Word respects it). 283 tests.
 
 ## Roadmap (agreed with Anna on 29 Sep 2026)

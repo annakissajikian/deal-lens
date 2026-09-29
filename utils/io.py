@@ -182,3 +182,21 @@ def load_sources(path: str | Path) -> dict[str, dict]:
     if not isinstance(raw, dict):
         raw = {}
     return {key: raw.get(f"_{key}", {}) for key in ("documents", "sources", "cross_checks")}
+
+
+def deal_filename(raw: dict) -> str:
+    """Safe file name from the deal's names, e.g. 'Northwind Holdings' + 'Apex' -> 'northwind_holdings_apex.json'."""
+    info = raw.get("deal", {})
+    name = f"{info.get('acquirer', '')} {info.get('target', '')}".lower()
+    return (re.sub(r"[^a-z0-9]+", "_", name).strip("_") or "deal") + ".json"
+
+
+def save_deal(raw: dict, folder: str | Path | None = None, overwrite: bool = False) -> Path:
+    """Write a deal dict as JSON to `folder` (default data/user_deals/). Refuses to overwrite unless asked."""
+    folder = Path(folder or USER_DEALS_DIR)
+    path = folder / deal_filename(raw)
+    if path.exists() and not overwrite:
+        raise FileExistsError(f"{path.name} already exists in {folder.name}/.")
+    folder.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return path

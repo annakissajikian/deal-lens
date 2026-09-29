@@ -25,8 +25,9 @@ every figure calculated in Python and traced to its source.**
   same rules (anything not calculated is reported as unavailable).
 - **Deal memo**: one click, downloadable as a Word document (.docx, with the
   football field as a chart; Word can save it as PDF), HTML or Markdown.
-- **New deal form** with validation shown next to each field; after the run,
-  one click downloads the deal memo as a Word document.
+- **New deal form** with validation shown next to each field; each valid run
+  saves the deal to `data/user_deals/` (listed in the sidebar as "Saved: …")
+  and offers the deal memo as a Word download.
 
 ## The example: Microsoft / Activision Blizzard (Jan 2022)
 
@@ -120,7 +121,7 @@ deal-lens/
 ├── data/
 │   ├── sample_deals/microsoft_activision.json  # real deal, every figure sourced
 │   ├── sources/                                # saved evidence (e.g. share price screenshot)
-│   └── user_deals/                             # optional: deal JSON files you add, listed as "Saved: ..."
+│   └── user_deals/                             # deals saved by the New deal form, listed as "Saved: ..."
 └── tests/
     ├── conftest.py              # isolated deal folders for app tests
     ├── fixtures/illustrative_deal.json  # round-number test deal (not shown in the app)
@@ -151,8 +152,10 @@ deal-lens/
   financials, assumptions, optional DCF, comps / precedents / reference
   ranges), optionally starting from an existing deal. *Run analysis* validates
   everything at once, with errors in a summary and under their group, and
-  shows the same result tabs. *Download deal memo (Word)* exports the
-  analysis as a .docx memo. Percentages are typed as 25 for 25%; blank
+  shows the same result tabs. A valid run also saves the deal as JSON to
+  `data/user_deals/` (re-running the same acquirer / target updates the file),
+  so it appears in the sidebar under *Example & saved deals*, and
+  *Download deal memo (Word)* exports the analysis as a .docx memo. Percentages are typed as 25 for 25%; blank
   optional fields mean "not provided", never zero.
 
 The app only displays results: all numbers come from `finance/`.
