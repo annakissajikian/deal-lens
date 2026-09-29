@@ -53,11 +53,8 @@ if go:
 
 
 with st.sidebar:
-    st.caption("Preliminary M&A analysis")
     mode = st.radio("Section", MODES, key="mode")
     label = st.selectbox("Deal", list(deals), key="deal") if mode == MODES[1] and deals else None
-    st.divider()
-    st.caption(DISCLAIMER)
 
 
 def show_saved_deal(label: str) -> None:
@@ -100,5 +97,6 @@ elif label is None:
 else:
     show_saved_deal(label)
 
-st.divider()
-st.caption(DISCLAIMER)
+if mode != MODES[0]:              # Home is a full-screen page: no footer there
+    st.divider()
+    st.caption(DISCLAIMER)

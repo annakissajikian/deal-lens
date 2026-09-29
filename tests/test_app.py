@@ -75,9 +75,29 @@ def test_landing_stats_come_from_the_engine():
 
 def test_landing_css_is_scoped():
     page = landing(AppTest.from_file(APP, default_timeout=30).run())
-    css = page[page.index("<style>"):page.index("</style>")]
-    selectors = [line.split("{")[0].strip() for line in css.splitlines() if "{" in line and not line.startswith(" ")]
-    assert all(sel.startswith((".dl-", "@")) for sel in selectors), selectors      # never html / body / :root
+    page_css, landing_css = page.split("</style>")[:2]
+    # the landing's own CSS only styles .dl-* elements (never html / body / :root)
+    selectors = [line.split("{")[0].strip() for line in landing_css.splitlines()
+                 if "{" in line and not line.startswith(" ")]
+    assert all(sel.startswith((".dl-", "@")) for sel in selectors), selectors
+    # the Home-only page CSS just hides the sidebar / header and removes the padding
+    assert '[data-testid="stSidebar"]' in page_css and '[data-testid="stHeader"]' in page_css
+    assert "display: none !important" in page_css and "padding: 0 !important" in page_css
+
+
+def test_home_is_full_screen_without_nav_or_footer():
+    at = AppTest.from_file(APP, default_timeout=30).run()
+    page = landing(at)
+    assert "height: 100vh" in page and "border-radius: 20px" not in page
+    assert "Open app" not in page and "dl-logo" not in page           # removed from the top of the page
+    assert not at.main.caption and not at.main.divider                # no footer on the full-screen Home
+
+
+def test_page_css_only_on_home():
+    at = AppTest.from_file(APP, default_timeout=30)
+    at.query_params["go"] = "example"
+    at.run()
+    assert not [h for h in at.get("html") if "stSidebar" in h.proto.body]    # sidebar visible elsewhere
 
 
 def test_try_an_example_link_opens_activision():
@@ -107,8 +127,8 @@ def test_unknown_go_parameter_is_ignored():
 @pytest.mark.parametrize("deal", [ILLUSTRATIVE, ACTIVISION])
 def test_disclaimer_always_shown(deal):
     at = run_app(deal)
-    assert DISCLAIMER in [c.value for c in at.sidebar.caption]
-    assert DISCLAIMER in [c.value for c in at.main.caption]
+    assert not at.sidebar.caption                                     # sidebar holds navigation only
+    assert DISCLAIMER in [c.value for c in at.main.caption]           # footer of every deal section
 
 
 def test_illustrative_headline_tiles_match_locked_outputs():

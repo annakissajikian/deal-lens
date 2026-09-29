@@ -8,7 +8,9 @@ the right section, then clears.
 The stats row is filled live by the engine from the example deal (never
 hard-coded figures); it is left out if the example deal is missing.
 
-All CSS is scoped under .dl-landing so it cannot restyle the rest of the app.
+The landing CSS is scoped under .dl-landing. HOME_PAGE_CSS is the one exception:
+it is only rendered on Home and makes the page full-screen (no sidebar, header or
+padding); every other section keeps the normal layout.
 """
 
 from __future__ import annotations
@@ -26,6 +28,16 @@ from utils.io import load_deal
 ASSETS = Path(__file__).parent.parent / "assets"
 STAT_METRICS = (("ev_ebitda", "EV / EBITDA"), ("premium", "Premium"), ("enterprise_value", "Enterprise value"))
 
+# Home only: full-screen dark page. Hides the sidebar (and its expand button) and the header,
+# removes the main container's padding and width limit.
+HOME_PAGE_CSS = """<style>
+[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
+[data-testid="stExpandSidebarButton"], [data-testid="stHeader"] { display: none !important; }
+[data-testid="stMainBlockContainer"] { padding: 0 !important; max-width: 100% !important; }
+[data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] { gap: 0 !important; }
+[data-testid="stAppViewContainer"], [data-testid="stMain"] { background: #08060E !important; }
+</style>"""
+
 
 def example_stats(path: Optional[Path]) -> Optional[list[tuple[str, str]]]:
     """(display value, label) for the example deal's headline metrics, calculated by the engine."""
@@ -37,7 +49,7 @@ def example_stats(path: Optional[Path]) -> Optional[list[tuple[str, str]]]:
 
 
 def render_home(stats: Optional[list[tuple[str, str]]], example_title: str = "") -> None:
-    st.html(landing_html(stats, example_title))
+    st.html(HOME_PAGE_CSS + landing_html(stats, example_title))
 
 
 def landing_html(stats: Optional[list[tuple[str, str]]], example_title: str = "") -> str:
@@ -56,20 +68,13 @@ def landing_html(stats: Optional[list[tuple[str, str]]], example_title: str = ""
 .dl-landing {{
   --dl-bg: #08060E; --dl-fg: #FFFFFF; --dl-muted: rgba(255,255,255,0.45);
   --dl-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  position: relative; overflow: hidden; min-height: 78vh; border-radius: 20px;
+  position: relative; overflow: hidden; height: 100vh; min-height: 560px;
   background: var(--dl-bg); color: var(--dl-fg); font-family: var(--dl-font);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding-inline: 24px; color-scheme: dark;
 }}
 .dl-landing *, .dl-landing *::before, .dl-landing *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
 .dl-landing a {{ text-decoration: none; }}
-.dl-nav {{ position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center;
-  justify-content: space-between; padding: 28px 40px; z-index: 10; }}
-.dl-logo {{ font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--dl-fg) !important;
-  display: flex; align-items: center; gap: 8px; }}
-.dl-logo-dot {{ width: 8px; height: 8px; border-radius: 50%; background: #C9A84C; }}
-.dl-nav-link {{ font-size: 13px; color: var(--dl-muted) !important; transition: color .2s; }}
-.dl-nav-link:hover {{ color: var(--dl-fg) !important; }}
 .dl-orb-wrap {{ position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   pointer-events: none; }}
 .dl-orb {{ width: min(560px, 80vw); height: min(560px, 80vw); border-radius: 50%; position: relative;
@@ -108,17 +113,13 @@ def landing_html(stats: Optional[list[tuple[str, str]]], example_title: str = ""
 .dl-stats-note {{ font-size: 10px; color: var(--dl-muted); margin-top: 10px; letter-spacing: .02em; }}
 .dl-tagline {{ font-size: 11px; color: var(--dl-muted); letter-spacing: .04em; text-align: right; line-height: 1.6; }}
 @media (max-width: 600px) {{
-  .dl-nav {{ padding: 20px; }} .dl-bottom {{ left: 20px; right: 20px; bottom: 20px; }}
+  .dl-bottom {{ left: 20px; right: 20px; bottom: 20px; }}
   .dl-stats {{ gap: 20px; }} .dl-stat-value {{ font-size: 18px; }} .dl-tagline {{ display: none; }}
   .dl-headline {{ font-size: clamp(44px, 14vw, 72px); }}
 }}
 @media (prefers-reduced-motion: reduce) {{ .dl-orb {{ animation: none; }} }}
 </style>
 <div class="dl-landing">
-  <div class="dl-nav">
-    <a class="dl-logo" href="?" target="_self"><span class="dl-logo-dot"></span>DealLens</a>
-    <a class="dl-nav-link" href="?go={'example' if stats else 'new'}" target="_self">Open app →</a>
-  </div>
   <div class="dl-orb-wrap"><div class="dl-orb"></div></div>
   <div class="dl-content">
     <h1 class="dl-headline">deals.</h1>

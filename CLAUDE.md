@@ -189,7 +189,10 @@ python -m pytest -v                        # run all tests
   `?go=new` / `?go=example` handled in `app.py` before the sidebar is drawn,
   then `st.query_params.clear()`. The mock-up's stats (10.4× / 23.6% /
   $747m) were invented, so the stats row is filled by the engine from the
-  example deal (`example_stats`). Earlier version: `assets/logo_mark.svg` +
+  example deal (`example_stats`). Home is full-screen: `HOME_PAGE_CSS` (only
+  rendered on Home) hides `stSidebar`, `stHeader` and the expand button and
+  removes `stMainBlockContainer` padding; hero `height: 100vh`; no top nav;
+  no page footer on Home. Earlier version: `assets/logo_mark.svg` +
   `logo_wordmark.svg` via `st.logo`; brand navy `#1F3A5F`, accent `#2A78D6`.
   Sample deals are labelled "Example: …", user deals "Saved: …". App tests
   must switch `mode` first (the landing page is the default view).
@@ -262,4 +265,6 @@ deal-lens/
 ```
 
 ## Disclaimer to keep in the UI and README
+(Decision 29 Sep 2026: not in the sidebar. It stays in the page footer of the
+deal and New deal sections, the AI analyst tab, every memo format and the README.)
 Preliminary analytical tool for educational purposes. Not investment advice.
