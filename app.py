@@ -17,6 +17,7 @@ from finance.comps import analyse_valuation
 from finance.dcf import analyse_dcf
 from finance.models import DealInputError
 from finance.transaction import analyse_transaction
+from ui.ai_panel import render_ai
 from ui.dcf import render_dcf
 from ui.deal_form import render_deal_form
 from ui.financials import render_financials
@@ -55,8 +56,9 @@ def show_saved_deal(label: str) -> None:
                f"Financials {deal.facts.financials_period}")
     sources = load_sources(deals[label])
     dcf = analyse_dcf(deal)
-    overview_tab, financials_tab, dcf_tab, valuation_tab = st.tabs(
-        ["Deal Overview", "Financials", "DCF", "Valuation"])
+    valuation = analyse_valuation(deal, dcf)
+    overview_tab, financials_tab, dcf_tab, valuation_tab, ai_tab = st.tabs(
+        ["Deal Overview", "Financials", "DCF", "Valuation", "AI analyst"])
     with overview_tab:
         render_overview(analysis, sources)
     with financials_tab:
@@ -64,7 +66,9 @@ def show_saved_deal(label: str) -> None:
     with dcf_tab:
         render_dcf(analysis, dcf)
     with valuation_tab:
-        render_valuation(analyse_valuation(deal, dcf), info.currency)
+        render_valuation(valuation, info.currency)
+    with ai_tab:
+        render_ai(analysis, sources, dcf, valuation, key_prefix="saved")
 
 
 if mode == MODES[1]:

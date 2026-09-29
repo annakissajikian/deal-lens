@@ -167,7 +167,16 @@ python -m pytest -v                        # run all tests
   Form: tables for methods, peers and reference ranges. Activision uses Allen
   & Co's selected ranges × management Adj. EBITDA (within 1% of Allen's
   per-share ranges) + 52-week range and analyst targets. Locked.
-- **Step 6 — AI analyst: NEXT.**
+- **Step 6 — AI analyst: COMPLETE (code + tests; live call awaits Anna's API
+  key).** 263 tests. `ai/payload.py` (engine outputs only, provenance per item,
+  "unavailable" list), `ai/number_checker.py` (every number in AI text must
+  appear in the payload; signs/commas/trailing zeros ignored),
+  `ai/analyst.py` (`client.beta.messages.parse`, `claude-opus-5-5`,
+  `output_format=AnalystReport`, `fallbacks="default"` with beta
+  `server-side-fallback-2026-07-01`; statements removed on unsupported
+  numbers, unknown item ids or kind/provenance mismatch). `anthropic==1.9.0`
+  added. Key from `st.secrets` / env only. Tests never call the API.
+- **Step 7 — Deal memo: NEXT.**
 
 ## Roadmap (agreed with Anna on 29 Sep 2026)
 Done: 1 transaction engine · 2 fully diluted shares + Activision · 3 Streamlit

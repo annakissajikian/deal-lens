@@ -19,6 +19,9 @@ and download or save it as JSON.
 sensitivity heatmap (DCF tab).
 **Step 5 — Comps, precedents, football field.** Multiple-based valuation
 ranges and a football field chart against the offer price (Valuation tab).
+**Step 6 — AI analyst.** Claude interprets the engine's outputs; a number
+checker removes any sentence with a figure the engine did not produce
+(AI analyst tab).
 
 ## Quick start
 
@@ -40,6 +43,7 @@ deal-lens/
 ├── app.py                       # Streamlit web app (display only, no calculations)
 ├── run_analysis.py              # command-line demo
 ├── ui/
+│   ├── ai_panel.py              # AI analyst tab
 │   ├── dcf.py                   # DCF tab: schedule, valuation, sensitivity heatmap
 │   ├── deal_form.py             # New deal form: grouped inputs, inline errors, export
 │   ├── overview.py              # Deal Overview tab: headline tiles, deal terms, warnings
@@ -53,6 +57,10 @@ deal-lens/
 │   ├── dcf.py                   # DCF valuation + WACC × growth sensitivity
 │   ├── comps.py                 # comps / precedents ranges + football field bars
 │   └── transaction.py           # the formulas
+├── ai/                          # AI analyst: interprets, never calculates
+│   ├── payload.py               # the only data the model sees, with provenance tags
+│   ├── number_checker.py        # rejects figures the engine did not produce
+│   └── analyst.py               # Claude API call (structured output) + checks
 ├── utils/
 │   ├── io.py                    # JSON file -> DealInputs
 │   └── formatting.py            # 13.60x, 20.0%, $6,000m, n.m.
@@ -67,6 +75,7 @@ deal-lens/
     ├── test_dilution.py         # hand-calculated treasury stock method
     ├── test_dcf.py              # hand-calculated DCF and sensitivity grid
     ├── test_comps.py            # hand-calculated comps, precedents, football field
+    ├── test_ai.py               # payload, number checker, statement checks (no API calls)
     ├── test_activision.py       # real-deal regression test
     ├── test_app.py              # web app, run headless with Streamlit AppTest
     ├── test_deal_form.py        # New deal form: conversions, saving, headless form runs
@@ -190,6 +199,22 @@ The football field adds the DCF range, the 52-week trading range
 Individual peer multiples are not disclosed in the proxy, so the example uses
 the selected ranges; for new deals, peers can be typed into the form.
 
+## AI analyst
+
+The AI analyst tab sends Claude (`claude-opus-5-5`, via the official
+`anthropic` SDK) a JSON payload of the engine's outputs, each tagged as a
+fact, assumption, calculated figure or calculated-from-assumptions figure,
+plus a list of unavailable data. The answer is a structured report of
+one-sentence statements, each tagged fact / assumption / calculated / AI
+interpretation and citing the payload items it uses. Before anything is
+shown, every statement is checked: any number not in the payload (rounded,
+converted or invented), an unknown item id, or a tag that does not match the
+cited items gets the statement removed, and the reason is listed.
+
+Set-up: put `ANTHROPIC_API_KEY = "sk-ant-..."` in `.streamlit/secrets.toml`
+(gitignored). Without a key the tab says the analyst is unavailable; all
+other tabs work.
+
 ## Limitations
 
 - Enterprise value excludes preferred stock, minority interests, leases and
@@ -208,6 +233,8 @@ the selected ranges; for new deals, peers can be typed into the form.
   margin build).
 - Comps/precedents: one multiple per method (e.g. EV / EBITDA); no
   calendarisation or size adjustment; peers are entered manually.
+- AI analyst: the number checker verifies figures and provenance tags, not
+  the reasoning; interpretations can still be wrong and must be reviewed.
 - A stated headline equity value is only a cross-check; the calculated figure
   is always used.
 - If no incremental margin is given, revenue synergies use the target's

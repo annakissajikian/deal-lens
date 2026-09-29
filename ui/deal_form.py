@@ -20,6 +20,7 @@ from finance.comps import analyse_valuation
 from finance.dcf import analyse_dcf
 from finance.models import DealInputError
 from finance.transaction import analyse_transaction
+from ui.ai_panel import render_ai
 from ui.dcf import render_dcf
 from ui.financials import render_financials
 from ui.overview import render_overview
@@ -284,8 +285,9 @@ def render_deal_form(deals: dict) -> None:
     st.caption("Enter the deal, press Run analysis, then review the results tabs. "
                "Percentages are typed as 25 for 25%. Leave optional fields blank if not available.")
     # Own key + default: otherwise Streamlit reuses the saved-deal view's active "Deal Overview" tab
-    inputs_tab, overview_tab, financials_tab, dcf_tab, valuation_tab = st.tabs(
-        ["Inputs", "Deal Overview", "Financials", "DCF", "Valuation"], key="f_tabs", default="Inputs")
+    inputs_tab, overview_tab, financials_tab, dcf_tab, valuation_tab, ai_tab = st.tabs(
+        ["Inputs", "Deal Overview", "Financials", "DCF", "Valuation", "AI analyst"],
+        key="f_tabs", default="Inputs")
 
     with inputs_tab:
         st.selectbox("Start from", ["Blank"] + list(deals), key="f_start",
@@ -417,7 +419,8 @@ def render_deal_form(deals: dict) -> None:
     for tab, render in ((overview_tab, lambda r: render_overview(r[1], NO_SOURCES)),
                         (financials_tab, lambda r: render_financials(r[1], NO_SOURCES)),
                         (dcf_tab, lambda r: render_dcf(r[1], r[2])),
-                        (valuation_tab, lambda r: render_valuation(r[3], r[0]["deal"]["currency"]))):
+                        (valuation_tab, lambda r: render_valuation(r[3], r[0]["deal"]["currency"])),
+                        (ai_tab, lambda r: render_ai(r[1], NO_SOURCES, r[2], r[3], key_prefix="form"))):
         with tab:
             if result is None or stale:
                 st.info("Run the analysis from the Inputs tab to see results here.")
