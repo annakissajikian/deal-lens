@@ -183,8 +183,13 @@ python -m pytest -v                        # run all tests
   runs the number checker over the whole memo.
 - **Step 8 — Visual polish + landing page: COMPLETE.** 274 tests. Sidebar
   sections Home / Example & saved deals / New deal (radio key `mode`; deal
-  selectbox key `deal`); landing page `ui/home.py` with "Analyse a deal" and
-  "Try the example" (callbacks set `mode`/`deal`); `assets/logo_mark.svg` +
+  selectbox key `deal`); landing page `ui/home.py`. **Replaced (29 Sep 2026)
+  by Anna's dark "deals." landing design**, rendered with `st.html`; all CSS
+  scoped under `.dl-landing` (never `html`/`body`/`:root`); links
+  `?go=new` / `?go=example` handled in `app.py` before the sidebar is drawn,
+  then `st.query_params.clear()`. The mock-up's stats (10.4× / 23.6% /
+  $747m) were invented, so the stats row is filled by the engine from the
+  example deal (`example_stats`). Earlier version: `assets/logo_mark.svg` +
   `logo_wordmark.svg` via `st.logo`; brand navy `#1F3A5F`, accent `#2A78D6`.
   Sample deals are labelled "Example: …", user deals "Saved: …". App tests
   must switch `mode` first (the landing page is the default view).

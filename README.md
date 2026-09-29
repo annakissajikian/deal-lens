@@ -141,7 +141,11 @@ deal-lens/
 
 `streamlit run app.py` opens the landing page. The sidebar has three sections:
 
-- **Home**: *Analyse a deal* (opens the form) or *Try the example*.
+- **Home**: a dark landing page (`st.html`, CSS scoped under `.dl-landing`) with
+  *Analyse a deal* (opens the form) and *Try an example* (opens Microsoft /
+  Activision). Its stats row is calculated live by the engine from the
+  example deal. The links use `?go=new` / `?go=example`, which the app reads
+  on load and then clears.
 - **Example & saved deals**: the Microsoft / Activision example ("Example: …")
   and deals you saved ("Saved: …"), with tabs **Deal Overview**,
   **Financials** (every figure tagged Fact, Fact · derived, Assumption,

@@ -51,25 +51,57 @@ def test_dropdown_lists_both_sample_deals():
     assert at.sidebar.selectbox[0].options == [ILLUSTRATIVE, ACTIVISION]
 
 
+def landing(at: AppTest) -> str:
+    return at.get("html")[0].proto.body
+
+
 def test_app_opens_on_the_landing_page():
     at = AppTest.from_file(APP, default_timeout=30).run()
-    assert at.title[0].value == "DealLens"
-    labels = [b.label for b in at.button]
-    assert "Analyse a deal" in labels and "Try the example: Microsoft / Activision" in labels
+    page = landing(at)
+    assert '<h1 class="dl-headline">deals.</h1>' in page
+    assert 'href="?go=new" target="_self" class="dl-primary">Analyse a deal</a>' in page
+    assert 'href="?go=example" target="_self" class="dl-ghost">Try an example' in page
     assert not at.sidebar.selectbox                                   # no deal shown by default
 
 
-def test_example_button_opens_activision_in_one_click():
-    at = AppTest.from_file(APP, default_timeout=30).run()
-    next(b for b in at.button if b.label.startswith("Try the example")).click().run()
+def test_landing_stats_come_from_the_engine():
+    page = landing(AppTest.from_file(APP, default_timeout=30).run())
+    for value, label in (("20.39x", "EV / EBITDA"), ("45.3%", "Premium"), ("$68,824m", "Enterprise value")):
+        assert f'<div class="dl-stat-value">{value}</div><div class="dl-stat-label">{label}</div>' in page
+    assert "Microsoft Corporation / Activision Blizzard, Inc. · calculated by DealLens" in page
+    for invented in ("10.4", "23.6%", "$747m"):                      # the mock-up's placeholder figures
+        assert invented not in page
+
+
+def test_landing_css_is_scoped():
+    page = landing(AppTest.from_file(APP, default_timeout=30).run())
+    css = page[page.index("<style>"):page.index("</style>")]
+    selectors = [line.split("{")[0].strip() for line in css.splitlines() if "{" in line and not line.startswith(" ")]
+    assert all(sel.startswith((".dl-", "@")) for sel in selectors), selectors      # never html / body / :root
+
+
+def test_try_an_example_link_opens_activision():
+    at = AppTest.from_file(APP, default_timeout=30)
+    at.query_params["go"] = "example"
+    at.run()
     assert at.sidebar.radio(key="mode").value == "Example & saved deals"
     assert at.title[0].value == "Microsoft Corporation / Activision Blizzard, Inc."
+    assert not at.query_params                                        # cleared: a refresh stays put
 
 
-def test_analyse_a_deal_button_opens_the_form():
-    at = AppTest.from_file(APP, default_timeout=30).run()
-    next(b for b in at.button if b.label == "Analyse a deal").click().run()
+def test_analyse_a_deal_link_opens_the_form():
+    at = AppTest.from_file(APP, default_timeout=30)
+    at.query_params["go"] = "new"
+    at.run()
     assert at.title[0].value == "New deal"
+    assert not at.query_params
+
+
+def test_unknown_go_parameter_is_ignored():
+    at = AppTest.from_file(APP, default_timeout=30)
+    at.query_params["go"] = "nowhere"
+    at.run()
+    assert at.sidebar.radio(key="mode").value == "Home" and not at.exception
 
 
 @pytest.mark.parametrize("deal", [ILLUSTRATIVE, ACTIVISION])

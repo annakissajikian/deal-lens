@@ -22,7 +22,7 @@ from ui.ai_panel import render_ai
 from ui.dcf import render_dcf
 from ui.deal_form import render_deal_form
 from ui.financials import render_financials
-from ui.home import ASSETS, render_home
+from ui.home import ASSETS, example_stats, render_home
 from ui.memo_panel import render_memo
 from ui.overview import render_overview
 from ui.valuation import render_valuation
@@ -41,12 +41,15 @@ deals = {f"Example: {label}": path for label, path in list_sample_deals().items(
 example = next((label for label, path in deals.items() if path.name == EXAMPLE_FILE), None)
 
 
-def go_new_deal() -> None:
+# Landing-page links carry ?go=new / ?go=example (HTML cannot call Streamlit callbacks).
+# Apply it before the sidebar widgets are drawn, then clear it so a refresh stays put.
+go = st.query_params.get("go")
+if go == "new":
     st.session_state.mode = MODES[2]
-
-
-def go_example() -> None:
+elif go == "example" and example:
     st.session_state.mode, st.session_state.deal = MODES[1], example
+if go:
+    st.query_params.clear()
 
 
 with st.sidebar:
@@ -89,7 +92,7 @@ def show_saved_deal(label: str) -> None:
 
 
 if mode == MODES[0]:
-    render_home(go_new_deal, go_example if example else None)
+    render_home(example_stats(deals.get(example)), example.removeprefix("Example: ") if example else "")
 elif mode == MODES[2]:
     render_deal_form(deals)
 elif label is None:
