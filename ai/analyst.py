@@ -45,7 +45,20 @@ Rules:
 - In "item_ids" cite the ids of every payload item a statement relies on.
 - Keep facts, assumptions, calculated figures and your interpretation distinguishable; say when a
   conclusion depends on assumptions (for example the DCF depends on WACC and terminal growth).
-- Be concise and specific; write for an investment banking analyst. This is not investment advice.
+
+Your view:
+- Give a clear view, as a senior deal team member would. Say whether the deal looks attractive, fair,
+  full or stretched for the buyer (and whether the offer looks compelling for target shareholders),
+  and why. Make the headline your overall view when the evidence supports one.
+- Weigh the evidence: where the offer sits against the DCF, trading comps, precedent transactions and
+  market references; the size of the premium; how demanding the multiples are; how much of the value
+  depends on assumptions.
+- Flag the main risks explicitly (valuation, assumption sensitivity, missing synergy support, data gaps)
+  and say what would change your view.
+- Opinions and recommendations are "interpretation" statements. They follow the same number rule: cite
+  only figures from the payload, and cite the item ids your view rests on. If the payload is too thin
+  to support a view, say so rather than guessing.
+- Be concise and specific; write for an investment banking analyst. The app shows its own disclaimer.
 """
 
 
@@ -179,8 +192,11 @@ Rules:
   (for example: change the input in the New deal form and re-run the engine).
 - Answer in one to four short statements. Tag each: fact (reported input), assumption, calculated
   (engine output) or interpretation (your judgement), and cite the payload item ids it relies on.
+- When asked for a view (is the deal attractive, is the price fair, what are the risks, would you
+  recommend it), give one clearly and explain why, as an "interpretation" statement grounded in the
+  payload figures. Say what it depends on (for example DCF assumptions) and what would change it.
+  If the payload cannot support a view, say so rather than guessing.
 - Previous answers in the conversation were checked; stay consistent with them.
-- This is not investment advice.
 """
 
 
