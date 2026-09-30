@@ -213,6 +213,12 @@ python -m pytest -v                        # run all tests
   `ai_calls` counter. `tests/conftest.py` autouse fixture `no_real_settings`
   hides `.streamlit/secrets.toml` / env from every test (no real key, no paid
   calls). 283 tests.
+- **AI view + tagging rules (30 Sep 2026): COMPLETE.** Both prompts ask for a
+  clear view (attractive / fair / full / stretched, risks, what would change it)
+  as "interpretation" statements. Shared `TAGGING_RULES` in `ai/analyst.py`
+  mirror `check_statement()` (assumption > calculated > fact; split mixed
+  fact + calculated statements); the checks themselves are unchanged (Anna
+  chose prompt-only). Live Activision test: 0 statements rejected (was 7/21).
 - **Word memo export: COMPLETE.** The New
   deal form's export is now "Download deal memo (Word)" (`reports/memo.py`
   `Memo.docx`, via `python-docx==1.2.0`; football field drawn as PNG with

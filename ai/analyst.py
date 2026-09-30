@@ -28,6 +28,19 @@ from ai.number_checker import allowed_numbers, unsupported_numbers
 
 MODEL = "claude-opus-5-5"
 
+# How to tag a statement. These rules mirror check_statement(): a statement whose tag does not match
+# the provenance of the items it cites is removed, so the model is told the same rules up front.
+TAGGING_RULES = """- Tag every statement with its kind, then cite in "item_ids" every payload item it relies on.
+  Choose the kind from the "provenance" of the items you cite, in this order:
+    1. assumption     at least one cited item has provenance "assumption" or
+                      "calculated_from_assumptions" (e.g. anything using the DCF, WACC or synergies)
+    2. calculated     every cited item has provenance "calculated" or "calculated_from_assumptions"
+    3. fact           every cited item has provenance "fact"
+    interpretation    your own judgement or view; may cite any items
+- Do not mix reported facts and engine outputs in one "fact" or "calculated" statement. Split it
+  instead: e.g. "The offer price is $95.00" (fact) and "The offer implies EV of $68,824m" (calculated).
+"""
+
 SYSTEM_PROMPT = """You are a preliminary M&A analyst reviewing one transaction for a banking team.
 You receive a JSON payload produced by a deterministic Python valuation engine. Your job is to
 interpret it, not to compute anything.
@@ -37,13 +50,7 @@ Rules:
   "display" value (same rounding, same units, e.g. "$68,824m", "20.39x", "45.3%"). Never calculate,
   round, convert (no "bn") or estimate a figure. If a figure you would need is not in the payload,
   do not write it: add what is missing to "unavailable" instead.
-- Tag every statement with its kind:
-    fact           restates a reported input (items with provenance "fact")
-    assumption     restates or discusses a user or management assumption
-    calculated     restates an engine output (provenance "calculated" or "calculated_from_assumptions")
-    interpretation your own analytical judgement about what the figures mean
-- In "item_ids" cite the ids of every payload item a statement relies on.
-- Keep facts, assumptions, calculated figures and your interpretation distinguishable; say when a
+""" + TAGGING_RULES + """- Keep facts, assumptions, calculated figures and your interpretation distinguishable; say when a
   conclusion depends on assumptions (for example the DCF depends on WACC and terminal growth).
 
 Your view:
@@ -190,9 +197,8 @@ Rules:
   different WACC, offer price or synergy case), do not compute it: say it is unavailable because the
   engine has not calculated it, and add it to "unavailable". Suggest where it could come from if useful
   (for example: change the input in the New deal form and re-run the engine).
-- Answer in one to four short statements. Tag each: fact (reported input), assumption, calculated
-  (engine output) or interpretation (your judgement), and cite the payload item ids it relies on.
-- When asked for a view (is the deal attractive, is the price fair, what are the risks, would you
+- Answer in one to four short statements.
+""" + TAGGING_RULES + """- When asked for a view (is the deal attractive, is the price fair, what are the risks, would you
   recommend it), give one clearly and explain why, as an "interpretation" statement grounded in the
   payload figures. Say what it depends on (for example DCF assumptions) and what would change it.
   If the payload cannot support a view, say so rather than guessing.
